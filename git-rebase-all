@@ -23,8 +23,9 @@ check_blacklisted() {
 
 # Get upstream branch name
 get_upstream() {
-    # TODO
-    echo origin/master
+    NAME=$1
+    UPSTREAM=$(git config --get branch.$1.upstream ) || UPSTREAM="origin/master"
+    echo $UPSTREAM
 }
 
 BRANCHES=$(git show-ref --heads | cut -d ' ' -f 2)
@@ -34,7 +35,7 @@ for B in $BRANCHES; do
     check_blacklisted $NAME || continue
 
     git checkout --quiet $NAME
-    git try-rebase $(get_upstream)
+    git try-rebase $(get_upstream $NAME)
 done
 
 git checkout --quiet master
