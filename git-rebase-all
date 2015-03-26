@@ -1,0 +1,40 @@
+#! /bin/bash
+
+# Copyright (C) 2015 Ross Burton <ross@burtonini.com>
+# MIT licensed
+
+set -e
+
+BLACKLIST=$(git config --get rebase-all.blacklist) || true
+# Always blacklist master
+BLACKLIST="$BLACKLIST master"
+
+# Returns error if blacklisted
+check_blacklisted() {
+    NAME=$1
+    for BL in $BLACKLIST; do
+        if [ "$NAME" = "$BL" ]; then
+            echo $NAME is blacklisted
+            return 1
+        fi
+    done
+    return 0
+}
+
+# Get upstream branch name
+get_upstream() {
+    # TODO
+    echo origin/master
+}
+
+BRANCHES=$(git show-ref --heads | cut -d ' ' -f 2)
+for B in $BRANCHES; do
+    NAME=${B##refs/heads/}
+
+    check_blacklisted $NAME || continue
+
+    git checkout --quiet $NAME
+    git try-rebase $(get_upstream)
+done
+
+git checkout --quiet master
