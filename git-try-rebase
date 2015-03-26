@@ -1,0 +1,25 @@
+#! /bin/sh
+
+# Copyright (C) 2015 Ross Burton <ross@burtonini.com>
+# MIT licensed
+
+if [ $# -ne 1 ]; then
+    echo "git try-rebase [UPSTREAM]"
+    exit 1
+fi
+
+UPSTREAM="$1"
+
+NAME=$(git symbolic-ref HEAD)
+NAME=${NAME##refs/heads/}
+
+BOLD=`tput bold`
+NORMAL=`tput sgr0`
+
+git rebase --quiet "$1"
+if [ $? -eq 0 ]; then
+   echo $NAME rebased to $UPSTREAM
+else
+   git rebase --abort
+   echo ${BOLD}WARNING${NORMAL}: cannot rebase $NAME, aborted.
+fi
