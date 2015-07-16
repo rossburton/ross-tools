@@ -12,13 +12,13 @@ cp = ConfigParser.SafeConfigParser({"Verbose": "False",
                                     "NumberOfCommits": "10000"})
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
-verbose = True if cp.get("Config", "Verbose") == "True" else False
-NUM_COMMITS = int(cp.get("Config", "NumberOfCommits"))
+verbose = cp.getboolean("Config", "Verbose")
+num_commits = cp.getint("Config", "NumberOfCommits")
 
 def get_commits(branch):
     import os, subprocess
     os.chdir(os.path.expanduser(cp.get("Config", "RepoPath")))
-    revlist = subprocess.Popen("git log %s --format=oneline -n %d" % (branch, NUM_COMMITS), shell=True, stdout=subprocess.PIPE).communicate()[0]
+    revlist = subprocess.Popen("git log %s --format=oneline -n %d" % (branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
     revlist = revlist.decode("utf-8")
     revdata = {}
     for line in revlist.split("\n"):
