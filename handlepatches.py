@@ -66,7 +66,7 @@ server = imapclient.IMAPClient(cp.get("Config", "SMTPServer"), ssl=True)
 server.login(cp.get("Config", "SMTPUSer"), cp.get("Config", "SMTPPassword"))
 
 print "oe-core..."
-messages = match_messages(server, "INBOX", "label:Yocto-OE-core in:inbox PATCH")
+messages = match_messages(server, "INBOX", "label:Yocto-OE-core in:inbox PATCH*")
 server.add_flags(messages, imapclient.SEEN)
 server.delete_messages(messages)
 
