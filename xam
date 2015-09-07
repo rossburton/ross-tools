@@ -1,0 +1,18 @@
+#! /bin/bash
+
+# xam - apply patches to git from desktop selection
+# aka xsel | git am but OS agnostic
+
+# Copyright (C) 2015 Ross Burton <ross@burtonini.com>
+# MIT licensed
+
+if [[ $OSTYPE == darwin* ]]; then
+	PASTER=pbpaste
+elif [[ $OSTYPE == linux-gnu* ]]; then
+	PASTER=xsel -b
+else
+	echo Cannot determine paster
+	exit 1
+fi
+
+$PASTER | git am --whitespace=nowarn $*
