@@ -5,7 +5,7 @@
 # - option to just list all broken files
 # - test suite
 # - blame for pending patches
-
+# - validate signed-off-by
 
 
 class Result:
