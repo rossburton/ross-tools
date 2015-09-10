@@ -17,8 +17,6 @@ class Result:
     unknown_upstream_status = False
     # The upstream status value (Pending, etc)
     upstream_status = None
-    # The full matched Upstream-Status line
-    upstream_status_line = None
 
 def patchreview(patches):
     import re
@@ -42,7 +40,6 @@ def patchreview(patches):
             result.missing_upstream_status = True
             continue
 
-        result.upstream_status_line = match.group(0)
         value = match.group(1)
         if value != "Upstream-Status:":
             result.malformed_upstream_status = value
