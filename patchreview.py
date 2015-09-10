@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-import re, subprocess
-
 # TODO
 # - options to show full details or just summary
 # - option to just list all broken files
@@ -11,7 +9,9 @@ import re, subprocess
 
 
 
-def patchreview():
+def patchreview(patches):
+    import re
+
     # Optional whitespace, Upstream Status with optional hyphen or space, maybe
     # a colon, some whitespace, then the first word, case insensitive.
     status_re = re.compile(r"\n?[\t ]*(Upstream[- ]Status:?)[\t ]*(\w*)", re.IGNORECASE)
@@ -22,9 +22,6 @@ def patchreview():
     patches_with_status = 0
     malformed_status = 0
     pending_patches = 0
-
-    # Find all the patches under the current directory
-    patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).split()
 
     for patch in patches:
         total_patches += 1
@@ -66,4 +63,6 @@ Patches in Pending state: %d""" % (total_patches,
 
 
 if __name__ == "__main__":
-    patchreview()
+    import subprocess
+    patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).split()
+    patchreview(patches)
