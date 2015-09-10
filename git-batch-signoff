@@ -1,6 +1,8 @@
 #! /bin/sh
 
+# eg git batch-signoff HEAD~10..HEAD
+
 git filter-branch --msg-filter '
     cat && echo &&
     echo "Signed-off-by: Ross Burton <ross.burton@intel.com>"
-' "$@"
+' $*
