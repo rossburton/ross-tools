@@ -39,7 +39,6 @@ def patchreview(patches):
         content = file(patch).read()
         match = status_re.search(content)
         if not match:
-            print "Missing Upstream-Status tag (%s)" % patch
             result.missing_upstream_status = True
             continue
 
@@ -47,13 +46,11 @@ def patchreview(patches):
         value = match.group(1)
         if value != "Upstream-Status:":
             result.malformed_upstream_status = value
-            print "Malformed Upstream-Status '%s' (%s)" % (value, patch)
 
         value = match.group(2).lower()
         # TODO: check case
         if value not in status_values:
             result.unknown_upstream_status = True
-            print "Unknown Upstream-Status value '%s' (%s)" % (value, patch)
         result.upstream_status = value
 
     return results
@@ -65,14 +62,25 @@ def analyse(results):
     malformed_status = 0
     pending_patches = 0
 
-    for r in results.itervalues():
+    for patch in sorted(results):
+        r = results[patch]
         total_patches += 1
+
+        # Build statistics
         if r.missing_upstream_status:
             missing_status += 1
         if r.malformed_upstream_status or r.unknown_upstream_status:
             malformed_status += 1
         if r.upstream_status == "pending":
             pending_patches += 1
+
+        # Output warnings
+        if r.missing_upstream_status:
+            print "Missing Upstream-Status tag (%s)" % patch
+        if r.malformed_upstream_status:
+            print "Malformed Upstream-Status '%s' (%s)" % (r.malformed_upstream_status, patch)
+        if r.unknown_upstream_status:
+            print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
 
     print
     print """Total patches found: %d
