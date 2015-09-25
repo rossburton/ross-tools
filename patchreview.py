@@ -4,7 +4,6 @@
 # - options to show full details or just summary
 # - option to just list all broken files
 # - test suite
-# - blame for pending patches
 # - validate signed-off-by
 
 
@@ -17,6 +16,14 @@ class Result:
     unknown_upstream_status = False
     # The upstream status value (Pending, etc)
     upstream_status = None
+
+def blame_patch(patch):
+    """
+    From a patch filename, return a list of "commit summary (author name <author
+    email>)" strings representing the history.
+    """
+    import subprocess
+    return subprocess.check_output(("git", "log", "--format=%s (%aN <%aE>)", patch)).splitlines()
 
 def patchreview(patches):
     import re
@@ -62,6 +69,7 @@ def analyse(results):
     for patch in sorted(results):
         r = results[patch]
         total_patches += 1
+        need_blame = False
 
         # Build statistics
         if r.missing_upstream_status:
@@ -73,11 +81,17 @@ def analyse(results):
 
         # Output warnings
         if r.missing_upstream_status:
+            need_blame = True
             print "Missing Upstream-Status tag (%s)" % patch
         if r.malformed_upstream_status:
+            need_blame = True
             print "Malformed Upstream-Status '%s' (%s)" % (r.malformed_upstream_status, patch)
         if r.unknown_upstream_status:
+            need_blame = True
             print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
+
+        if need_blame:
+            print "\n".join(blame_patch(patch))
 
     print
     print """Total patches found: %d
