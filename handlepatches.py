@@ -46,6 +46,10 @@ def match_messages(server, folder, search=None):
 
     response = server.fetch(messages, ['ENVELOPE'])
     for msgid, data in response.iteritems():
+        if "ENVELOPE" not in data:
+            print "Skipping %s without ENVELOPE" % msgid
+            continue
+
         subject = data["ENVELOPE"].subject
         if "]" in subject:
             subject = subject.rsplit("]", 1)[1].strip()
