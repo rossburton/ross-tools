@@ -5,6 +5,7 @@
 
 import os
 import sys
+import argparse
 import imapclient
 import ConfigParser
 
@@ -12,7 +13,12 @@ cp = ConfigParser.SafeConfigParser({"Verbose": "False",
                                     "NumberOfCommits": "10000"})
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
-verbose = cp.getboolean("Config", "Verbose")
+parser = argparse.ArgumentParser()
+parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
+parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true")
+args = parser.parse_args()
+
+verbose = cp.getboolean("Config", "Verbose") or args.verbose
 num_commits = cp.getint("Config", "NumberOfCommits")
 
 def get_commits(branch):
@@ -54,13 +60,7 @@ def match_messages(server, folder, search=None):
     print "Found %d merged patches" % len(messages)
     return messages
 
-
-
-if len(sys.argv) > 1:
-    branch = sys.argv[1]
-else:
-    branch = "origin/master"
-revdata = get_commits(branch)
+revdata = get_commits(args.branch)
 
 server = imapclient.IMAPClient(cp.get("Config", "SMTPServer"), ssl=True)
 server.login(cp.get("Config", "SMTPUSer"), cp.get("Config", "SMTPPassword"))
