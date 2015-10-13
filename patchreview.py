@@ -63,7 +63,7 @@ def patchreview(patches):
     return results
 
 
-def analyse(results):
+def analyse(results, want_blame=False):
     total_patches = 0
     missing_status = 0
     malformed_status = 0
@@ -93,7 +93,7 @@ def analyse(results):
             need_blame = True
             print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
 
-        if need_blame:
+        if want_blame and need_blame:
             print "\n".join(blame_patch(patch)) + "\n"
 
     print
