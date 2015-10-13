@@ -23,7 +23,10 @@ def blame_patch(patch):
     email>)" strings representing the history.
     """
     import subprocess
-    return subprocess.check_output(("git", "log", "--format=%s (%aN <%aE>)", patch)).splitlines()
+    return subprocess.check_output(("git", "log",
+                                    "--follow", "--find-renames", "--diff-filter=A",
+                                    "--format=%s (%aN <%aE>)",
+                                    "--", patch)).splitlines()
 
 def patchreview(patches):
     import re
@@ -91,7 +94,7 @@ def analyse(results):
             print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
 
         if need_blame:
-            print "\n".join(blame_patch(patch))
+            print "\n".join(blame_patch(patch)) + "\n"
 
     print
     print """Total patches found: %d
