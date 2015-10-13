@@ -96,14 +96,17 @@ def analyse(results, want_blame=False):
         if want_blame and need_blame:
             print "\n".join(blame_patch(patch)) + "\n"
 
+    def percent(num):
+        return "%d (%d%%)" % (num, round(num * 100.0 / total_patches))
+
     print
     print """Total patches found: %d
-Patches missing Upstream-Status: %d
-Patches with malformed Upstream-Status: %d
-Patches in Pending state: %d""" % (total_patches,
-                                   missing_status,
-                                   malformed_status,
-                                   pending_patches)
+Patches missing Upstream-Status: %s
+Patches with malformed Upstream-Status: %s
+Patches in Pending state: %s""" % (total_patches,
+                                   percent(missing_status),
+                                   percent(malformed_status),
+                                   percent(pending_patches))
 
 
 if __name__ == "__main__":
