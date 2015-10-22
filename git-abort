@@ -1,0 +1,26 @@
+#! /bin/sh
+
+set -e
+
+GITDIR=$(git rev-parse --git-dir)
+
+if [ -f $GITDIR/CHERRY_PICK_HEAD ]; then
+	echo Aborting cherry-pick...
+	git cherry-pick --abort
+elif [ -f $GITDIR/REVERT_HEAD ]; then
+	echo Aborting revert...
+	git revert --abort
+elif [ -f $GITDIR/rebase-apply/applying ]; then
+	echo Aborting am...
+	git am --abort
+elif [ -f $GITDIR/rebase-apply/rebasing ]; then
+	echo Aborting rebase...
+	git rebase --abort
+elif [ -d $GITDIR/rebase-apply ]; then
+	# If the directory exists but no hint inside, it could be either am or
+	# rebase.  Guess at am for now.
+	echo Aborting \(maybe\) am...
+	git am --abort
+else
+	echo Nothing found to abort.
+fi
