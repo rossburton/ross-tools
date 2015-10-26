@@ -7,9 +7,9 @@
 # MIT licensed
 
 if [[ $OSTYPE == darwin* ]]; then
-	PASTER=pbpaste
+	PASTER="pbpaste"
 elif [[ $OSTYPE == linux-gnu* ]]; then
-	PASTER=xsel -b
+	PASTER="xsel -b"
 else
 	echo Cannot determine paster
 	exit 1
