@@ -63,7 +63,12 @@ def patchreview(patches):
     return results
 
 
-def analyse(results, want_blame=False):
+def analyse(results, want_blame=False, verbose=True):
+    """
+    want_blame: display blame data for each malformed patch
+    verbose: display per-file results instead of just summary
+    """
+
     total_patches = 0
     missing_status = 0
     malformed_status = 0
@@ -85,13 +90,16 @@ def analyse(results, want_blame=False):
         # Output warnings
         if r.missing_upstream_status:
             need_blame = True
-            print "Missing Upstream-Status tag (%s)" % patch
+            if verbose:
+                print "Missing Upstream-Status tag (%s)" % patch
         if r.malformed_upstream_status:
             need_blame = True
-            print "Malformed Upstream-Status '%s' (%s)" % (r.malformed_upstream_status, patch)
+            if verbose:
+                print "Malformed Upstream-Status '%s' (%s)" % (r.malformed_upstream_status, patch)
         if r.unknown_upstream_status:
             need_blame = True
-            print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
+            if verbose:
+                print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
 
         if want_blame and need_blame:
             print "\n".join(blame_patch(patch)) + "\n"
