@@ -97,7 +97,10 @@ def analyse(results, want_blame=False):
             print "\n".join(blame_patch(patch)) + "\n"
 
     def percent(num):
-        return "%d (%d%%)" % (num, round(num * 100.0 / total_patches))
+        try:
+            return "%d (%d%%)" % (num, round(num * 100.0 / total_patches))
+        except ZeroDivisionError:
+            return "N/A"
 
     print
     print """Total patches found: %d
