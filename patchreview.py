@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 # TODO
-# - options to show full details or just summary
 # - option to just list all broken files
 # - test suite
 # - validate signed-off-by
@@ -69,6 +68,10 @@ def analyse(results, want_blame=False, verbose=True):
     verbose: display per-file results instead of just summary
     """
 
+    # want_blame requires verbose, so disable blame if we're not verbose
+    if want_blame and not verbose:
+        want_blame = False
+
     total_patches = 0
     missing_status = 0
     malformed_status = 0
@@ -110,7 +113,9 @@ def analyse(results, want_blame=False, verbose=True):
         except ZeroDivisionError:
             return "N/A"
 
-    print
+    if verbose:
+        print
+
     print """Total patches found: %d
 Patches missing Upstream-Status: %s
 Patches with malformed Upstream-Status: %s
@@ -121,6 +126,12 @@ Patches in Pending state: %s""" % (total_patches,
 
 
 if __name__ == "__main__":
-    import subprocess
+    import argparse, subprocess
+
+    args = argparse.ArgumentParser(description="Patch Review Tool")
+    args.add_argument("-b", "--blame", action="store_true", help="show blame for malformed patches")
+    args.add_argument("-v", "--verbose", action="store_true", help="show per-patch results")
+    args = args.parse_args()
+
     patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).split()
-    analyse(patchreview(patches))
+    analyse(patchreview(patches), want_blame=args.blame, verbose=args.verbose)
