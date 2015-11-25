@@ -28,14 +28,23 @@ get_upstream() {
     echo $UPSTREAM
 }
 
+COUNT=0
+FAILED=0
+
 BRANCHES=$(git show-ref --heads | cut -d ' ' -f 2)
 for B in $BRANCHES; do
+    COUNT=$((COUNT + 1))
     NAME=${B##refs/heads/}
 
     check_blacklisted $NAME || continue
 
     git checkout --quiet $NAME
-    git try-rebase $(get_upstream $NAME)
+    if ! git try-rebase $(get_upstream $NAME); then
+        FAILED=$((FAILED + 1))
+    fi
 done
 
 git checkout --quiet master
+
+echo
+echo "Rebased $COUNT branches, $FAILED didn't rebase successfully."
