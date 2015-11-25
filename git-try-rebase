@@ -16,10 +16,12 @@ NAME=${NAME##refs/heads/}
 BOLD=`tput bold`
 NORMAL=`tput sgr0`
 
-git rebase --quiet "$1"
+git rebase "$1" >/dev/null 2>/dev/null
 if [ $? -eq 0 ]; then
    echo $NAME rebased to $UPSTREAM
+   exit 0
 else
    git rebase --abort
-   echo ${BOLD}WARNING${NORMAL}: cannot rebase $NAME, aborted.
+   echo ${BOLD}$NAME failed to rebase to $UPSTREAM${NORMAL}
+   exit 1
 fi
