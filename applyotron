@@ -1,0 +1,66 @@
+#! /usr/bin/env python
+
+# Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
+# MIT licensed
+
+import sys
+import subprocess
+
+class PatchSource:
+      def apply(self):
+            pass
+
+class ClipboardPatch(PatchSource):
+      def __init__(self):
+            # TODO: respect platform
+            self.patch = subprocess.check_output(['xsel'])
+            # TODO: sanity check that a patch was copied
+
+      def apply(self):
+            gitam = subprocess.Popen(['git', 'am', '--signoff', '--whitespace=nowarn'],
+                                  stdin=subprocess.PIPE)
+            gitam.communicate(self.patch)
+
+class FilePatch(PatchSource):
+      def __init__(self, files):
+            self.files = files
+
+      def apply(self):
+            subprocess.check_call(['git', 'am', '--signoff', '--whitespace=nowarn'] + self.files)
+
+
+# TODO RevisionListPatch
+
+
+def wipe_and_build(targets):
+      subprocess.check_call(['wipe-sysroot'])
+      subprocess.check_call(['bitbake'] + targets)
+
+
+def buildhistory():
+      subprocess.check_call(['buildhistory-diff'])
+
+
+if __name__ == "__main__":
+      import argparse
+
+      args = argparse.ArgumentParser(description="Applyotron")
+      group = args.add_mutually_exclusive_group(required=True)
+      group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
+      group.add_argument("-f", "--file", action="append", help="Take patch from file")
+      args.add_argument('target', nargs='+', help='targets to build')
+      args = args.parse_args()
+
+      if args.clipboard:
+            patch = ClipboardPatch()
+      elif args.file:
+            patch = FilePatch(args.file)
+      else:
+            raise ValueError("No patch source selected")
+
+      targets = args.target
+      # TODO exception handling
+      wipe_and_build(targets)
+      patch.apply()
+      wipe_and_build(targets)
+      buildhistory()
