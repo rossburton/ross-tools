@@ -3,10 +3,13 @@
 # Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
 # MIT licensed
 
-import sys
-import subprocess
+import email, subprocess
 
 class PatchSource:
+
+      def enumerate(self):
+            pass
+
       def apply(self):
             pass
 
@@ -16,6 +19,9 @@ class ClipboardPatch(PatchSource):
             self.patch = subprocess.check_output(['xsel', '-b'])
             # TODO: sanity check that a patch was copied
 
+      def enumerate(self):
+            return (email.message_from_string(self.patch)['Subject'],)
+
       def apply(self):
             gitam = subprocess.Popen(['git', 'am', '--signoff', '--whitespace=nowarn'],
                                   stdin=subprocess.PIPE)
@@ -24,6 +30,9 @@ class ClipboardPatch(PatchSource):
 class FilePatch(PatchSource):
       def __init__(self, files):
             self.files = files
+
+      def enumerate(self):
+            return (email.message_from_file(open(f))['Subject'] for f in self.files)
 
       def apply(self):
             subprocess.check_call(['git', 'am', '--signoff', '--whitespace=nowarn'] + self.files)
@@ -57,6 +66,9 @@ if __name__ == "__main__":
             patch = FilePatch(args.file)
       else:
             raise ValueError("No patch source selected")
+
+      print "Applying the following patches:"
+      print "\n ".join(patch.enumerate())
 
       targets = args.target
       # TODO exception handling
