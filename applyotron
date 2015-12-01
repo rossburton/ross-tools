@@ -13,7 +13,7 @@ class PatchSource:
 class ClipboardPatch(PatchSource):
       def __init__(self):
             # TODO: respect platform
-            self.patch = subprocess.check_output(['xsel'])
+            self.patch = subprocess.check_output(['xsel', '-b'])
             # TODO: sanity check that a patch was copied
 
       def apply(self):
