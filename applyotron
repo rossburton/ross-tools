@@ -17,7 +17,14 @@ class ClipboardPatch(PatchSource):
       def __init__(self):
             # TODO: respect platform
             self.patch = subprocess.check_output(['xsel', '-b'])
-            # TODO: sanity check that a patch was copied
+
+            # Check the clipboard contains something that looks like a patch
+            process = subprocess.Popen(['git', 'apply', '--check', '-'],
+                                       stdin=subprocess.PIPE)
+            process.communicate(self.patch)
+            retcode = process.poll()
+            if retcode:
+                  raise subprocess.CalledProcessError(retcode, 'git-apply')
 
       def enumerate(self):
             return (email.message_from_string(self.patch)['Subject'],)
