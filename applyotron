@@ -54,10 +54,10 @@ class RevisionsPatch(PatchSource):
             self.revs = revisions
 
       def enumerate(self):
-            return subprocess.check_output(['git', 'show', '--no-patch', '--format=format:%s'] + [self.revs]).split('\n')
+            return subprocess.check_output(['git', 'show', '--no-patch', '--format=format:%s'] + self.revs).split('\n')
 
       def apply(self):
-            subprocess.check_call(['git', 'cherry-pick', '--signoff', '--whitespace=nowarn'] + [self.revs])
+            subprocess.check_call(['git', 'cherry-pick', '--signoff', '--whitespace=nowarn'] + self.revs)
 
 
 def wipe_and_build(targets):
@@ -76,7 +76,7 @@ if __name__ == "__main__":
       group = args.add_mutually_exclusive_group(required=True)
       group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
       group.add_argument("-f", "--file", action="append", help="Take patch from file")
-      group.add_argument("-r", "--revisions", action="store", help="Cherry-pick revision range")
+      group.add_argument("-r", "--revisions", action="append", help="Cherry-pick revision range")
       args.add_argument('target', nargs='+', help='targets to build')
       args = args.parse_args()
 
