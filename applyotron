@@ -23,7 +23,7 @@ class ClipboardPatch(PatchSource):
             return (email.message_from_string(self.patch)['Subject'],)
 
       def apply(self):
-            gitam = subprocess.Popen(['git', 'am', '--signoff', '--whitespace=nowarn'],
+            gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
                                   stdin=subprocess.PIPE)
             gitam.communicate(self.patch)
             # TODO: check result code
@@ -36,7 +36,7 @@ class FilePatch(PatchSource):
             return (email.message_from_file(open(f))['Subject'] for f in self.files)
 
       def apply(self):
-            subprocess.check_call(['git', 'am', '--signoff', '--whitespace=nowarn'] + self.files)
+            subprocess.check_call(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'] + self.files)
 
 
 # TODO RevisionListPatch
