@@ -26,6 +26,7 @@ class ClipboardPatch(PatchSource):
             gitam = subprocess.Popen(['git', 'am', '--signoff', '--whitespace=nowarn'],
                                   stdin=subprocess.PIPE)
             gitam.communicate(self.patch)
+            # TODO: check result code
 
 class FilePatch(PatchSource):
       def __init__(self, files):
@@ -72,6 +73,7 @@ if __name__ == "__main__":
 
       targets = args.target
       # TODO exception handling
+      # TODO If I control-C applyotron the childs keep on running. This is bad.
       wipe_and_build(targets)
       patch.apply()
       wipe_and_build(targets)
