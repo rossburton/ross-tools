@@ -125,13 +125,28 @@ Patches in Pending state: %s""" % (total_patches,
                                    percent(pending_patches))
 
 
+
+def histogram(results):
+    from toolz import recipes, dicttoolz
+    import math
+    counts = recipes.countby(lambda r: r.upstream_status, results.itervalues())
+    bars = dicttoolz.valmap(lambda v: "#" * int(math.ceil(float(v) / len(results) * 100)), counts)
+    for k in bars:
+        print "%-20s %s (%d)" % (k.capitalize() if k else "No status", bars[k], counts[k])
+
+
 if __name__ == "__main__":
     import argparse, subprocess
 
     args = argparse.ArgumentParser(description="Patch Review Tool")
     args.add_argument("-b", "--blame", action="store_true", help="show blame for malformed patches")
     args.add_argument("-v", "--verbose", action="store_true", help="show per-patch results")
+    args.add_argument("-g", "--histogram", action="store_true", help="show patch histogram")
     args = args.parse_args()
 
     patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).split()
-    analyse(patchreview(patches), want_blame=args.blame, verbose=args.verbose)
+    results = patchreview(patches)
+    analyse(results, want_blame=args.blame, verbose=args.verbose)
+    if args.histogram:
+        print
+        histogram(results)
