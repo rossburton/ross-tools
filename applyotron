@@ -60,10 +60,11 @@ class RevisionsPatch(PatchSource):
             subprocess.check_call(['git', 'cherry-pick', '--signoff', '--whitespace=nowarn'] + self.revs)
 
 
-def wipe_and_build(targets):
+def wipe_sysroot():
       subprocess.check_call(['wipe-sysroot'])
-      subprocess.check_call(['bitbake'] + targets)
 
+def build(targets):
+      subprocess.check_call(['bitbake'] + targets)
 
 def buildhistory():
       subprocess.check_call(['buildhistory-diff'])
@@ -95,7 +96,8 @@ if __name__ == "__main__":
       targets = args.target
       # TODO exception handling
       # TODO If I control-C applyotron the childs keep on running. This is bad.
-      wipe_and_build(targets)
+      build(targets)
       patch.apply()
-      wipe_and_build(targets)
+      wipe_sysroot()
+      build(targets)
       buildhistory()
