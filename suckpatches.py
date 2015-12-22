@@ -19,7 +19,8 @@ server = imapclient.IMAPClient(cp.get("Config", "SMTPServer"), ssl=True)
 server.login(cp.get("Config", "SMTPUSer"), cp.get("Config", "SMTPPassword"))
 
 server.select_folder("INBOX")
-messages = server.gmail_search("label:Yocto-OE-core in:inbox is:starred")
+# TODO Configure this in some way. git config?
+messages = server.gmail_search("label:Yocto-OE-core label:Patches-Apply in:inbox")
 print "Fetched %d messages" % len(messages)
 
 response = server.fetch(messages, ['RFC822'])
@@ -34,5 +35,5 @@ for msgid, data in response.iteritems():
         raise subprocess.CalledProcessError(retcode, 'git')
 
 server.add_flags(messages, imapclient.SEEN)
-server.remove_flags(messages, imapclient.FLAGGED)
+server.remove_gmail_labels(messages, "Patches/Apply")
 server.delete_messages(messages)
