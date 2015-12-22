@@ -15,24 +15,33 @@ class PatchSource:
 
 class ClipboardPatch(PatchSource):
       def __init__(self):
-            # TODO: respect platform
-            self.patch = subprocess.check_output(['xsel', '-b'])
+            import tempfile
 
-            # Check the clipboard contains something that looks like a patch
-            process = subprocess.Popen(['git', 'apply', '--check', '-'],
-                                       stdin=subprocess.PIPE)
-            process.communicate(self.patch)
-            retcode = process.poll()
-            if retcode:
-                  raise subprocess.CalledProcessError(retcode, 'git-apply')
+            # Save the clipboard contents for passing to git-am in apply()
+            # TODO: respect platform, eg pbcopy for osx
+            self.mail = subprocess.check_output(['xsel', '-b'])
+
+            # Check the clipboard contains something that looks like a patch.
+            # As the clipboard contains an email it could be encoded, so use
+            # git-mailinfo to extract the patch itself first.  It's a shame
+            # git-am doesn't have a --dry-run option.
+            with tempfile.NamedTemporaryFile(prefix="applyotron") as patchfile:
+                  process = subprocess.Popen(['git', 'mailinfo', '/dev/null', patchfile.name],
+                                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                  process.communicate(self.mail)
+                  retcode = process.wait()
+                  if retcode:
+                        raise subprocess.CalledProcessError(retcode, 'git-mailinfo')
+
+                  process = subprocess.check_call(['git', 'apply', '--check', patchfile.name])
 
       def enumerate(self):
-            return (email.message_from_string(self.patch)['Subject'],)
+            return (email.message_from_string(self.mail)['Subject'],)
 
       def apply(self):
             gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
                                   stdin=subprocess.PIPE)
-            gitam.communicate(self.patch)
+            gitam.communicate(self.mail)
             retcode = gitam.poll()
             if retcode:
                   raise subprocess.CalledProcessError(retcode, 'git')
