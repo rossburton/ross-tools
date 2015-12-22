@@ -57,7 +57,7 @@ class RevisionsPatch(PatchSource):
             return subprocess.check_output(['git', 'show', '--no-patch', '--format=format:%s'] + self.revs).split('\n')
 
       def apply(self):
-            subprocess.check_call(['git', 'cherry-pick', '--signoff', '--whitespace=nowarn'] + self.revs)
+            subprocess.check_call(['git', 'cherry-pick', '--signoff'] + self.revs)
 
 
 def wipe_sysroot():
