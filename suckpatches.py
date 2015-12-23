@@ -11,6 +11,7 @@ import ConfigParser
 import subprocess
 
 # TODO integrate into applyotron
+DRY_RUN = False
 
 cp = ConfigParser.SafeConfigParser()
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
@@ -23,9 +24,12 @@ server.select_folder("INBOX")
 messages = server.gmail_search("label:Yocto-OE-core label:Patches-Apply in:inbox")
 print "Fetched %d messages" % len(messages)
 
-response = server.fetch(messages, ['RFC822'])
-# TODO sort by date sent to approximate patch order
-for msgid, data in response.iteritems():
+response = server.fetch(messages, ['RFC822 ENVELOPE'])
+for data in sorted(response.itervalues(), key=lambda d: d['ENVELOPE'].date):
+    if DRY_RUN:
+        print data['ENVELOPE'].subject
+        continue
+
     # TODO: verify that the subject contains PATCH
     gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
                              stdin=subprocess.PIPE)
@@ -34,6 +38,7 @@ for msgid, data in response.iteritems():
     if retcode:
         raise subprocess.CalledProcessError(retcode, 'git')
 
-server.add_flags(messages, imapclient.SEEN)
-server.remove_gmail_labels(messages, "Patches/Apply")
-server.delete_messages(messages)
+if not DRY_RUN:
+    server.add_flags(messages, imapclient.SEEN)
+    server.remove_gmail_labels(messages, "Patches/Apply")
+    server.delete_messages(messages)
