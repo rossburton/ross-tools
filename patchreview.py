@@ -32,8 +32,7 @@ def patchreview(patches):
 
     # Optional whitespace, Upstream Status with optional hyphen or space, maybe
     # a colon, some whitespace, then the first word, case insensitive.
-    status_re = re.compile(r"[\t ]*(Upstream[- ]Status:?)[\t ]*(\w*)", re.IGNORECASE)
-
+    status_re = re.compile(r"^[\t ]*(Upstream[- ]Status:?)[\t ]*(\w*)", re.IGNORECASE | re.MULTILINE)
     status_values = ("accepted", "pending", "inappropriate", "backport", "submitted", "denied")
 
     results = {}
