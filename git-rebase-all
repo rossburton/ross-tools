@@ -38,7 +38,7 @@ for B in $BRANCHES; do
 
     check_blacklisted $NAME || continue
 
-    git checkout --quiet $NAME
+    git checkout --quiet $NAME || continue
     if ! git try-rebase $(get_upstream $NAME); then
         FAILED=$((FAILED + 1))
     fi
