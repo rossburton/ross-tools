@@ -15,6 +15,12 @@ class Result:
     unknown_upstream_status = False
     # The upstream status value (Pending, etc)
     upstream_status = None
+    # Whether the patch has a Signed-off-by or not
+    missing_sob = False
+    # Whether the Signed-off-by tag is malformed in some way
+    malformed_sob = False
+    # The Signed-off-by tag value
+    sob = None
 
 def blame_patch(patch):
     """
@@ -30,8 +36,10 @@ def blame_patch(patch):
 def patchreview(patches):
     import re
 
-    # Optional whitespace, Upstream Status with optional hyphen or space, maybe
-    # a colon, some whitespace, then the first word, case insensitive.
+    # General pattern: start of line, optional whitespace, tag with optional
+    # hyphen or spaces, maybe a colon, some whitespace, then the value, all case
+    # insensitive.
+    sob_re = re.compile(r"^[\t ]*(Signed[- ]off[- ]by:?)[\t ]*(.+)", re.IGNORECASE | re.MULTILINE)
     status_re = re.compile(r"^[\t ]*(Upstream[- ]Status:?)[\t ]*(\w*)", re.IGNORECASE | re.MULTILINE)
     status_values = ("accepted", "pending", "inappropriate", "backport", "submitted", "denied")
 
@@ -41,22 +49,33 @@ def patchreview(patches):
         result = Result()
         results[patch] = result
 
-        # Find the Upstream-Status tag
         content = file(patch).read()
+
+        # Find the Signed-off-by tag
+        match = sob_re.search(content)
+        if match:
+            value = match.group(1)
+            if value != "Signed-off-by:":
+                result.malformed_sob = value
+            result.sob = match.group(2)
+        else:
+            result.missing_sob = True
+
+
+        # Find the Upstream-Status tag
         match = status_re.search(content)
-        if not match:
+        if match:
+            value = match.group(1)
+            if value != "Upstream-Status:":
+                result.malformed_upstream_status = value
+
+            value = match.group(2).lower()
+            # TODO: check case
+            if value not in status_values:
+                result.unknown_upstream_status = True
+            result.upstream_status = value
+        else:
             result.missing_upstream_status = True
-            continue
-
-        value = match.group(1)
-        if value != "Upstream-Status:":
-            result.malformed_upstream_status = value
-
-        value = match.group(2).lower()
-        # TODO: check case
-        if value not in status_values:
-            result.unknown_upstream_status = True
-        result.upstream_status = value
 
     return results
 
@@ -72,6 +91,8 @@ def analyse(results, want_blame=False, verbose=True):
         want_blame = False
 
     total_patches = 0
+    missing_sob = 0
+    malformed_sob = 0
     missing_status = 0
     malformed_status = 0
     pending_patches = 0
@@ -82,6 +103,10 @@ def analyse(results, want_blame=False, verbose=True):
         need_blame = False
 
         # Build statistics
+        if r.missing_sob:
+            missing_sob += 1
+        if r.malformed_sob:
+            malformed_sob += 1
         if r.missing_upstream_status:
             missing_status += 1
         if r.malformed_upstream_status or r.unknown_upstream_status:
@@ -90,6 +115,16 @@ def analyse(results, want_blame=False, verbose=True):
             pending_patches += 1
 
         # Output warnings
+        if r.missing_sob:
+            need_blame = True
+            if verbose:
+                print "Missing Signed-off-by tag (%s)" % patch
+        # TODO: disable this for now as too much fails
+        if False and r.malformed_sob:
+            need_blame = True
+            if verbose:
+                print "Malformed Signed-off-by '%s' (%s)" % (r.malformed_sob, patch)
+
         if r.missing_upstream_status:
             need_blame = True
             if verbose:
@@ -116,9 +151,13 @@ def analyse(results, want_blame=False, verbose=True):
         print
 
     print """Total patches found: %d
+Patches missing Signed-off-by: %s
+Patches with malformed Signed-off-by: %s
 Patches missing Upstream-Status: %s
 Patches with malformed Upstream-Status: %s
 Patches in Pending state: %s""" % (total_patches,
+                                   percent(missing_sob),
+                                   percent(malformed_sob),
                                    percent(missing_status),
                                    percent(malformed_status),
                                    percent(pending_patches))
