@@ -6,11 +6,16 @@
 import email, subprocess
 
 class PatchSource:
-
       def enumerate(self):
+            """
+            Return a summary of the patches to be applied as a list of strings.
+            """
             pass
 
       def apply(self):
+            """
+            Apply the patches, raising an exception if there is an error.
+            """
             pass
 
 class ClipboardPatch(PatchSource):
