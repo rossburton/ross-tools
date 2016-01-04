@@ -24,32 +24,32 @@ class ClipboardPatch(PatchSource):
 
             # Save the clipboard contents for passing to git-am in apply()
             # TODO: respect platform, eg pbcopy for osx
-            self.mail = subprocess.check_output(['xsel', '-b'])
+            self.mail = subprocess.check_output(["xsel", "-b"])
 
             # Check the clipboard contains something that looks like a patch.
             # As the clipboard contains an email it could be encoded, so use
             # git-mailinfo to extract the patch itself first.  It's a shame
             # git-am doesn't have a --dry-run option.
             with tempfile.NamedTemporaryFile(prefix="applyotron") as patchfile:
-                  process = subprocess.Popen(['git', 'mailinfo', '/dev/null', patchfile.name],
+                  process = subprocess.Popen(["git", "mailinfo", "/dev/null", patchfile.name],
                                              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
                   process.communicate(self.mail)
                   retcode = process.wait()
                   if retcode:
-                        raise subprocess.CalledProcessError(retcode, 'git-mailinfo')
+                        raise subprocess.CalledProcessError(retcode, "git-mailinfo")
 
-                  process = subprocess.check_call(['git', 'apply', '--check', patchfile.name])
+                  process = subprocess.check_call(["git", "apply", "--check", patchfile.name])
 
       def enumerate(self):
-            return (email.message_from_string(self.mail)['Subject'],)
+            return (email.message_from_string(self.mail)["Subject"],)
 
       def apply(self):
-            gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
+            gitam = subprocess.Popen(["git", "am", "--3way", "--signoff", "--whitespace=nowarn"],
                                   stdin=subprocess.PIPE)
             gitam.communicate(self.mail)
             retcode = gitam.poll()
             if retcode:
-                  raise subprocess.CalledProcessError(retcode, 'git')
+                  raise subprocess.CalledProcessError(retcode, "git")
 
 
 class FilePatch(PatchSource):
@@ -57,10 +57,10 @@ class FilePatch(PatchSource):
             self.files = files
 
       def enumerate(self):
-            return (email.message_from_file(open(f))['Subject'] for f in self.files)
+            return (email.message_from_file(open(f))["Subject"] for f in self.files)
 
       def apply(self):
-            subprocess.check_call(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'] + self.files)
+            subprocess.check_call(["git", "am", "--3way", "--signoff", "--whitespace=nowarn"] + self.files)
 
 
 class RevisionsPatch(PatchSource):
@@ -68,20 +68,20 @@ class RevisionsPatch(PatchSource):
             self.revs = revisions
 
       def enumerate(self):
-            return subprocess.check_output(['git', 'show', '--no-patch', '--format=format:%s'] + self.revs).split('\n')
+            return subprocess.check_output(["git", "show", "--no-patch", "--format=format:%s"] + self.revs).split("\n")
 
       def apply(self):
-            subprocess.check_call(['git', 'cherry-pick', '--signoff'] + self.revs)
+            subprocess.check_call(["git", "cherry-pick", "--signoff"] + self.revs)
 
 
 def wipe_sysroot():
-      subprocess.check_call(['wipe-sysroot'])
+      subprocess.check_call(["wipe-sysroot"])
 
 def build(targets):
-      subprocess.check_call(['bitbake'] + targets)
+      subprocess.check_call(["bitbake"] + targets)
 
 def buildhistory():
-      subprocess.check_call(['buildhistory-diff'])
+      subprocess.check_call(["buildhistory-diff"])
 
 
 if __name__ == "__main__":
@@ -92,7 +92,7 @@ if __name__ == "__main__":
       group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
       group.add_argument("-f", "--file", action="append", help="Take patch from file")
       group.add_argument("-r", "--revisions", action="append", help="Cherry-pick revision range")
-      args.add_argument('target', nargs='+', help='targets to build')
+      args.add_argument("target", nargs="+", help="targets to build")
       args = args.parse_args()
 
       if args.clipboard:
