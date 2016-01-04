@@ -88,6 +88,7 @@ if __name__ == "__main__":
       import argparse
 
       args = argparse.ArgumentParser(description="Applyotron")
+      args.add_argument("-d", "--dry-run", action="store_true", help="List patches found, but don't build or apply")
       group = args.add_mutually_exclusive_group(required=True)
       group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
       group.add_argument("-f", "--file", action="append", help="Take patch from file")
@@ -107,11 +108,12 @@ if __name__ == "__main__":
       print "Applying the following patches:"
       print "\n ".join(patch.enumerate())
 
-      targets = args.target
-      # TODO exception handling
-      # TODO If I control-C applyotron the childs keep on running. This is bad.
-      build(targets)
-      patch.apply()
-      wipe_sysroot()
-      build(targets)
-      buildhistory()
+      if not args.dry_run:
+            targets = args.target
+            # TODO exception handling
+            # TODO If I control-C applyotron the childs keep on running. This is bad.
+            build(targets)
+            patch.apply()
+            wipe_sysroot()
+            build(targets)
+            buildhistory()
