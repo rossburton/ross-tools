@@ -136,14 +136,17 @@ def histogram(results):
 
 
 if __name__ == "__main__":
-    import argparse, subprocess
+    import argparse, subprocess, os
 
     args = argparse.ArgumentParser(description="Patch Review Tool")
     args.add_argument("-b", "--blame", action="store_true", help="show blame for malformed patches")
     args.add_argument("-v", "--verbose", action="store_true", help="show per-patch results")
     args.add_argument("-g", "--histogram", action="store_true", help="show patch histogram")
+    args.add_argument("directory", nargs="?", help="directory to scan")
     args = args.parse_args()
 
+    if args.directory:
+        os.chdir(args.directory)
     patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).split()
     results = patchreview(patches)
     analyse(results, want_blame=args.blame, verbose=args.verbose)
