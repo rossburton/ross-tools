@@ -1,0 +1,4 @@
+This patch has an invalid Upstream-Status line.
+
+Upstream-Status:
+Signed-off-by: Ross Burton <ross.burton@intel.com>

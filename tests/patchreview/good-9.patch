@@ -1,0 +1,5 @@
+This patch has lots of Upstream Status lines in the header but none of them are
+actual Upstream-Status tags, including this one: Upstream-Status: Broken.
+
+Upstream-Status: Pending
+Signed-off-by: Ross Burton <ross.burton@intel.com>

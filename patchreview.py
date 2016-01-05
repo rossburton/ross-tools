@@ -233,3 +233,12 @@ if __name__ == "__main__":
     if args.histogram:
         print()
         histogram(results)
+
+
+
+# TODO unit test case.
+# factor out main
+# chdir tests/patchreview
+# patchreview()
+# construct expected hashes
+# assert hashes equal
