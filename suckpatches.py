@@ -21,7 +21,8 @@ server.login(cp.get("Config", "SMTPUSer"), cp.get("Config", "SMTPPassword"))
 
 server.select_folder("INBOX")
 # TODO Configure this in some way. git config?
-messages = server.gmail_search("label:Yocto-OE-core label:Patches-Apply in:inbox")
+# ^ss_cy means "has:orange-guillemet"
+messages = server.gmail_search("in:inbox label:Yocto-OE-core l:^ss_co")
 print "Fetched %d messages" % len(messages)
 
 response = server.fetch(messages, ['RFC822 ENVELOPE'])
@@ -40,5 +41,5 @@ for data in sorted(response.itervalues(), key=lambda d: d['ENVELOPE'].date):
 
 if not DRY_RUN:
     server.add_flags(messages, imapclient.SEEN)
-    server.remove_gmail_labels(messages, "Patches/Apply")
+    server.remove_flags(messages, imapclient.FLAGGED)
     server.delete_messages(messages)
