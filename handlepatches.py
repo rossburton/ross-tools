@@ -66,8 +66,8 @@ def match_messages(server, folder, search=None):
 
 revdata = get_commits(args.branch)
 
-server = imapclient.IMAPClient(cp.get("Config", "SMTPServer"), ssl=True)
-server.login(cp.get("Config", "SMTPUSer"), cp.get("Config", "SMTPPassword"))
+server = imapclient.IMAPClient(cp.get("Config", "IMAPServer"), ssl=True)
+server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
 
 print "oe-core..."
 messages = match_messages(server, "INBOX", "label:Yocto-OE-core in:inbox")
