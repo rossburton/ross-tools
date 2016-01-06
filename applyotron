@@ -74,6 +74,50 @@ class RevisionsPatch(PatchSource):
             subprocess.check_call(["git", "cherry-pick", "--signoff"] + self.revs)
 
 
+class GMailPatch(PatchSource):
+      def __init__(self):
+            import ConfigParser, imapclient, os
+
+            cp = ConfigParser.SafeConfigParser()
+            cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
+
+            self.server = imapclient.IMAPClient("imap.gmail.com", ssl=True)
+            self.server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
+            self.server.select_folder("INBOX")
+
+            # TODO Configure this in some way.
+            # l:^ss_co means "has:orange-guillemet"
+            messages = self.server.gmail_search("in:inbox label:Yocto-OE-core l:^ss_co")
+            # TODO abort if no messages found
+
+            # List of (msgid, mail body) pairs
+            self.patches = []
+            response = self.server.fetch(messages, ['ENVELOPE RFC822'])
+            for msgid, data in sorted(response.iteritems(), key=lambda d: d[1]['ENVELOPE'].date):
+                  self.patches.append((msgid, data['RFC822']))
+
+      def enumerate(self):
+            return (email.message_from_string(mail)["Subject"] for msgid, mail in self.patches)
+
+      def apply(self):
+            import imapclient
+
+            for msgid, mail in self.patches:
+                  # TODO: verify that the subject contains PATCH?
+                  gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
+                                           stdin=subprocess.PIPE)
+                  gitam.communicate(mail)
+                  retcode = gitam.wait()
+                  if retcode:
+                        raise subprocess.CalledProcessError(retcode, 'git')
+
+                  self.server.add_flags(msgid, imapclient.SEEN)
+                  self.server.remove_flags(msgid, imapclient.FLAGGED)
+                  self.server.delete_messages(msgid)
+
+            self.server.close_folder()
+            self.server.logout()
+
 def wipe_sysroot():
       subprocess.check_call(["wipe-sysroot"])
 
@@ -93,6 +137,7 @@ def main():
       group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
       group.add_argument("-f", "--file", action="append", help="Take patch from file")
       group.add_argument("-r", "--revisions", action="append", help="Cherry-pick revision range")
+      group.add_argument("-m", "--mail", action="store_true", help="Take patches from GMail")
       args.add_argument("target", nargs="*", help="targets to build")
       args = args.parse_args()
 
@@ -102,6 +147,8 @@ def main():
             patch = FilePatch(args.file)
       elif args.revisions:
             patch = RevisionsPatch(args.revisions)
+      elif args.mail:
+            patch = GMailPatch()
       else:
             raise ValueError("No patch source selected")
 
