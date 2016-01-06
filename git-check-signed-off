@@ -1,0 +1,8 @@
+#! /bin/sh
+
+# Check that I signed off every commit listed since the revision specific.
+# If no revision is specified, origin/master.. is used
+
+SOB="Signed-off-by: `git config user.name` <`git config user.email`>"
+
+git log --invert-grep --fixed-strings --grep "$SOB" ${*:-origin/master..}
