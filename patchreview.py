@@ -21,6 +21,8 @@ class Result:
     malformed_sob = False
     # The Signed-off-by tag value
     sob = None
+    # Whether a patch looks like a CVE but doesn't have a CVE tag
+    missing_cve = False
 
 def blame_patch(patch):
     """
@@ -42,6 +44,8 @@ def patchreview(patches):
     sob_re = re.compile(r"^[\t ]*(Signed[- ]off[- ]by:?)[\t ]*(.+)", re.IGNORECASE | re.MULTILINE)
     status_re = re.compile(r"^[\t ]*(Upstream[- ]Status:?)[\t ]*(\w*)", re.IGNORECASE | re.MULTILINE)
     status_values = ("accepted", "pending", "inappropriate", "backport", "submitted", "denied")
+    cve_tag_re = re.compile(r"^[\t ]*(CVE:)[\t ]*(.*)", re.IGNORECASE | re.MULTILINE)
+    cve_re = re.compile(r"cve-[0-9]{4}-[0-9]{4,6}", re.IGNORECASE)
 
     results = {}
 
@@ -77,6 +81,12 @@ def patchreview(patches):
         else:
             result.missing_upstream_status = True
 
+        # Check that patches which looks like CVEs have CVE tags
+        if cve_re.search(patch) or cve_re.search(content):
+            if not cve_tag_re.search(content):
+                result.missing_cve = True
+        # TODO: extract CVE list
+
     return results
 
 
@@ -95,6 +105,7 @@ def analyse(results, want_blame=False, verbose=True):
     malformed_sob = 0
     missing_status = 0
     malformed_status = 0
+    missing_cve = 0
     pending_patches = 0
 
     for patch in sorted(results):
@@ -111,6 +122,8 @@ def analyse(results, want_blame=False, verbose=True):
             missing_status += 1
         if r.malformed_upstream_status or r.unknown_upstream_status:
             malformed_status += 1
+        if r.missing_cve:
+            missing_cve += 1
         if r.upstream_status == "pending":
             pending_patches += 1
 
@@ -124,7 +137,10 @@ def analyse(results, want_blame=False, verbose=True):
             need_blame = True
             if verbose:
                 print "Malformed Signed-off-by '%s' (%s)" % (r.malformed_sob, patch)
-
+        if r.missing_cve:
+            need_blame = True
+            if verbose:
+                print "Missing CVE tag (%s) % patch"
         if r.missing_upstream_status:
             need_blame = True
             if verbose:
@@ -153,11 +169,13 @@ def analyse(results, want_blame=False, verbose=True):
     print """Total patches found: %d
 Patches missing Signed-off-by: %s
 Patches with malformed Signed-off-by: %s
+Patches missing CVE: %s
 Patches missing Upstream-Status: %s
 Patches with malformed Upstream-Status: %s
 Patches in Pending state: %s""" % (total_patches,
                                    percent(missing_sob),
                                    percent(malformed_sob),
+                                   percent(missing_cve),
                                    percent(missing_status),
                                    percent(malformed_status),
                                    percent(pending_patches))
