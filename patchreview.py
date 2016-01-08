@@ -140,7 +140,7 @@ def analyse(results, want_blame=False, verbose=True):
         if r.missing_cve:
             need_blame = True
             if verbose:
-                print "Missing CVE tag (%s) % patch"
+                print "Missing CVE tag (%s)" % patch
         if r.missing_upstream_status:
             need_blame = True
             if verbose:
