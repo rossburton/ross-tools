@@ -15,4 +15,4 @@ else
 	exit 1
 fi
 
-$PASTER | git am --whitespace=nowarn $*
+$PASTER | git am --3way --whitespace=nowarn $*
