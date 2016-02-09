@@ -1,0 +1,24 @@
+#! /bin/bash
+
+if [ $# -lt 3 ]; then
+   echo "$ diffbranchtool <BRANCH> <BRANCH> <COMMAND>"
+   exit 1
+fi
+
+BEFORE=$1
+shift
+AFTER=$1
+shift
+COMMAND="$*"
+
+git checkout --quiet $BEFORE
+BEFORE_LOG=$(mktemp --tmpdir branchtool.XXXXXX)
+$COMMAND >$BEFORE_LOG
+
+git checkout --quiet $AFTER
+AFTER_LOG=$(mktemp --tmpdir branchtool.XXXXXX)
+$COMMAND >$AFTER_LOG
+
+echo Comparing $BEFORE with $AFTER
+diff $BEFORE_LOG $AFTER_LOG
+rm $BEFORE_LOG $AFTER_LOG

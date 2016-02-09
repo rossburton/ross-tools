@@ -3,7 +3,7 @@
 # Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
 # MIT licensed
 
-import email, subprocess
+import email, subprocess, os, sys
 
 class PatchSource:
       def enumerate(self):
@@ -76,7 +76,7 @@ class RevisionsPatch(PatchSource):
 
 class GMailPatch(PatchSource):
       def __init__(self):
-            import ConfigParser, imapclient, os
+            import ConfigParser, imapclient
 
             cp = ConfigParser.SafeConfigParser()
             cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
@@ -150,14 +150,20 @@ def main():
       elif args.mail:
             patch = GMailPatch()
       else:
-            raise ValueError("No patch source selected")
+            print "No patch source selected"
+            sys.exit(os.EX_USAGE)
 
-      print "Applying the following patches:"
-      print "\n ".join(patch.enumerate())
+      patches = list(patch.enumerate())
+      if patches:
+            print "Applying the following patches:"
+            print "\n ".join(patches)
+      else:
+            print "No patches found to apply."
+            sys.exit(os.EX_NOINPUT)
 
       if args.dry_run:
             # And we're done
-            return
+            sys.exit(os.EX_OK)
 
       if args.target:
             # TODO Exception handling. If I control-C applyotron the
