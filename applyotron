@@ -76,33 +76,37 @@ class RevisionsPatch(PatchSource):
 
 class GMailPatch(PatchSource):
       def __init__(self):
+            server = self.connect()
+
+            # TODO Configure this in some way.
+            # l:^ss_co means "has:orange-guillemet"
+            messages = server.gmail_search("in:inbox label:Yocto-OE-core l:^ss_co")
+            # TODO abort if no messages found
+
+            # List of (msgid, mail body) pairs
+            self.patches = []
+            response = server.fetch(messages, ['ENVELOPE RFC822'])
+            for msgid, data in sorted(response.iteritems(), key=lambda d: d[1]['ENVELOPE'].date):
+                  self.patches.append((msgid, data['RFC822']))
+
+      def connect(self):
             import ConfigParser, imapclient
 
             cp = ConfigParser.SafeConfigParser()
             cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
-            self.server = imapclient.IMAPClient("imap.gmail.com", ssl=True)
-            self.server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
-            self.server.select_folder("INBOX")
-
-            # TODO Configure this in some way.
-            # l:^ss_co means "has:orange-guillemet"
-            messages = self.server.gmail_search("in:inbox label:Yocto-OE-core l:^ss_co")
-            # TODO abort if no messages found
-
-            # List of (msgid, mail body) pairs
-            self.patches = []
-            response = self.server.fetch(messages, ['ENVELOPE RFC822'])
-            for msgid, data in sorted(response.iteritems(), key=lambda d: d[1]['ENVELOPE'].date):
-                  self.patches.append((msgid, data['RFC822']))
+            server = imapclient.IMAPClient("imap.gmail.com", ssl=True, use_uid=True)
+            server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
+            server.select_folder("INBOX")
+            return server
 
       def enumerate(self):
             return (email.message_from_string(mail)["Subject"] for msgid, mail in self.patches)
 
       def apply(self):
-            import imapclient
-
+            server = self.connect()
             for msgid, mail in self.patches:
+                  import imapclient
                   # TODO: verify that the subject contains PATCH?
                   gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
                                            stdin=subprocess.PIPE)
@@ -111,12 +115,12 @@ class GMailPatch(PatchSource):
                   if retcode:
                         raise subprocess.CalledProcessError(retcode, 'git')
 
-                  self.server.add_flags(msgid, imapclient.SEEN)
-                  self.server.remove_flags(msgid, imapclient.FLAGGED)
-                  self.server.delete_messages(msgid)
+                  server.add_flags(msgid, imapclient.SEEN)
+                  server.remove_flags(msgid, imapclient.FLAGGED)
+                  server.delete_messages(msgid)
 
-            self.server.close_folder()
-            self.server.logout()
+            server.close_folder()
+            server.logout()
 
 def wipe_sysroot():
       subprocess.check_call(["wipe-sysroot"])
