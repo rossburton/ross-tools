@@ -1,0 +1,109 @@
+#! /usr/bin/env python
+
+import git, re, unittest
+
+serverurl = "https://bugzilla.yoctoproject.org"
+
+def get_bugs(s):
+    """
+    Parse the commit message and return a list of all bug numbers found.
+    """
+    return [int(m.group("bug")) for m in re.finditer(r"\[ ?(YOCTO|YP) ?#?(?P<bug>[0-9]+) ?\]", s, re.IGNORECASE)]
+
+def get_revision(s):
+    """
+    Parse the commit message and return a (repository, SHA) pair if there's a
+    combo-layer reference to an original commit, or None if there isn't one.
+    """
+    m = re.search(r"(?s).*\(From (?P<repo>.+) rev: (?P<sha>[0-9a-f]{40})\)", s)
+    if m:
+        return (m.group("repo"), m.group("sha"))
+    else:
+        return None
+
+def fetch_bug_status(bugs):
+    import json, urllib, urllib2
+    BATCH_SIZE = 100
+    # Do this in chunks until urllib2 is replaced with something not arse and
+    # we're doing POSTs.
+    result = {}
+    while bugs:
+        # TODO can't make permissive=true work to gracefully handle permission denied
+        data = json.dumps([{"ids": bugs[:BATCH_SIZE],
+                            "include_fields": ["id", "summary", "resolution", "status"]}])
+        req = urllib2.urlopen("%s/jsonrpc.cgi?method=Bug.get&params=%s" % (serverurl, urllib.quote(data)))
+        response = json.load(req)
+        if response['result']:
+            result.update({bug["id"]: bug for bug in response["result"]["bugs"]})
+        else:
+            print response["error"]["message"]
+            # TODO do... something?
+            pass
+        bugs = bugs[BATCH_SIZE:]
+    return result
+
+class Tests(unittest.TestCase):
+    def test_re(self):
+        s = ""
+        self.assertEqual(get_bugs(s), [])
+        self.assertIsNone(get_revision(s))
+
+        s = """sync: remove upstream's rebuild logic
+            [ YOCTO #9445 ]
+            (From OE-Core rev: ccc61cee8f097862640722abb9a9f53781efdac3)"""
+        self.assertEqual(get_bugs(s), [9445])
+        self.assertEqual(get_revision(s), ("OE-Core", "ccc61cee8f097862640722abb9a9f53781efdac3"))
+
+        s = """[ YOCTO #1234 ] [YP#4321]"""
+        self.assertEqual(get_bugs(s), [1234, 4321])
+
+        s = """oeqa/selftest/kernel.py: Add new file destined for kernel related tests
+            [YP#7202]:  Test for linux-dummy
+            (From OE-Core rev: da0d01bea522bf2ae7380ff53c26d1ef5654a0fb)
+            (From OE-Core rev: 0de3ba0b6a3db9ac94763a0a3b715cae0b6e1311)"""
+        self.assertEqual(get_bugs(s), [7202])
+        self.assertEqual(get_revision(s), ("OE-Core", "0de3ba0b6a3db9ac94763a0a3b715cae0b6e1311"))
+
+    def test_bugzilla(self):
+        bugs = fetch_bug_status(["1234", "4321"])
+        self.assertEqual(len(bugs), 2)
+        self.assertIn(1234, bugs)
+        self.assertIn(4321, bugs)
+        self.assertNotIn(9999, bugs)
+        self.assertEqual(bugs[1234]["status"], "VERIFIED")
+        self.assertEqual(bugs[4321]["status"], "VERIFIED")
+
+        bugs = fetch_bug_status(["1234"])
+        self.assertEqual(len(bugs), 1)
+        bug = bugs[1234]
+        # Verify that include_fields is working
+        self.assertIn("summary", bug)
+        self.assertNotIn("cc", bug)
+        self.assertEqual(bug["summary"], "No response when I click the 'Install/Remove Software' icon")
+
+
+if __name__ == "__main__":
+    #unittest.main()
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("start")
+    parser.add_argument("end", nargs="?", default="HEAD")
+    args = parser.parse_args()
+
+    from collections import defaultdict
+    repo = git.Repo(".")
+    # Dictionary of bug ID to list of commits that mention it
+    bugs = defaultdict(list)
+
+    for commit in repo.iter_commits("%s..%s" % (args.start, args.end)):
+        for bug in get_bugs(commit.message):
+            bugs[bug].append(commit.hexsha)
+
+    bugdata = fetch_bug_status(bugs.keys())
+    for bugid, bug in sorted(bugdata.items()):
+        if bug["status"] not in ("RESOLVED","VERIFIED", "CLOSED"):
+            print "%s: %s" % (bug["status"], bug["summary"])
+            #print "Mentioned in %s %s" %
+            print "%s/%d" % (serverurl, bugid)
+            print
