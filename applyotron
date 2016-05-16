@@ -136,7 +136,7 @@ def main():
       import argparse
 
       args = argparse.ArgumentParser(description="Applyotron")
-      args.add_argument("-d", "--dry-run", action="store_true", help="List patches found, but don't build or apply")
+      args.add_argument("-l", "--list", action="store_true", help="List patches found, but don't build or apply")
       group = args.add_mutually_exclusive_group(required=True)
       group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
       group.add_argument("-f", "--file", action="append", help="Take patch from file")
@@ -165,7 +165,7 @@ def main():
             print "No patches found to apply."
             sys.exit(os.EX_NOINPUT)
 
-      if args.dry_run:
+      if args.list:
             # And we're done
             sys.exit(os.EX_OK)
 
