@@ -8,6 +8,7 @@ import sys
 import argparse
 import imapclient
 import ConfigParser
+import subprocess
 
 cp = ConfigParser.SafeConfigParser()
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
@@ -20,9 +21,12 @@ args = parser.parse_args()
 
 verbose = args.verbose
 
+def check_git_workdir():
+    devnull = open(os.devnull, "w")
+    return subprocess.call(["git", "rev-parse", "--is-inside-work-tree"],
+                           stdout=devnull, stderr=subprocess.STDOUT) == 0
+
 def get_commits(branch, num_commits):
-    import os, subprocess
-    os.chdir(os.path.expanduser(cp.get("Config", "RepoPath")))
     revlist = subprocess.Popen("git log %s --format=oneline -n %d" % (branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
     revlist = revlist.decode("utf-8")
     revdata = {}
@@ -62,6 +66,11 @@ def match_messages(server, folder, search=None):
 
     print "Found %d merged patches" % len(messages)
     return messages
+
+
+if not check_git_workdir():
+    print "handlepatches wasn't ran inside a git clone, aborting"
+    sys.exit(1)
 
 revdata = get_commits(args.branch, args.commits)
 
