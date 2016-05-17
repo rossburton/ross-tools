@@ -9,19 +9,18 @@ import argparse
 import imapclient
 import ConfigParser
 
-cp = ConfigParser.SafeConfigParser({"Verbose": "False",
-                                    "NumberOfCommits": "10000"})
+cp = ConfigParser.SafeConfigParser()
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
-parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true")
+parser.add_argument("-c", "--commits", help="Number of commits back to go in history", type=int, default=10000)
+parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true", default=False)
 args = parser.parse_args()
 
-verbose = cp.getboolean("Config", "Verbose") or args.verbose
-num_commits = cp.getint("Config", "NumberOfCommits")
+verbose = args.verbose
 
-def get_commits(branch):
+def get_commits(branch, num_commits):
     import os, subprocess
     os.chdir(os.path.expanduser(cp.get("Config", "RepoPath")))
     revlist = subprocess.Popen("git log %s --format=oneline -n %d" % (branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
@@ -64,7 +63,7 @@ def match_messages(server, folder, search=None):
     print "Found %d merged patches" % len(messages)
     return messages
 
-revdata = get_commits(args.branch)
+revdata = get_commits(args.branch, args.commits)
 
 server = imapclient.IMAPClient(cp.get("Config", "IMAPServer"), ssl=True)
 server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
