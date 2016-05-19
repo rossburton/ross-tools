@@ -102,9 +102,9 @@ if __name__ == "__main__":
     bugs = defaultdict(list)
 
     for commit in repo.iter_commits("%s..%s" % (args.start, args.end)):
-        sha = get_revision(commit.message) or ("Poky", commit.hexsha)
+        repo, sha = get_revision(commit.message) or ("Poky", commit.hexsha)
         for bug in get_bugs(commit.message):
-            bugs[bug].append(sha)
+            bugs[bug].append((repo, sha, commit.summary))
 
     bugdata = fetch_bug_status(bugs.keys())
     for bugid, bug in sorted(bugdata.items()):
@@ -112,5 +112,5 @@ if __name__ == "__main__":
             print "%s: %s" % (bug["status"], bug["summary"])
             print "%s/%d" % (serverurl, bugid)
             print "Mentioned in:"
-            print "\n".join(map(lambda (a, b): "%s: %s" % (a, b), bugs[bugid]))
+            print "\n".join(map(lambda (repo, sha, summary): "%s\n%s %s" % (summary, repo, sha), bugs[bugid]))
             print
