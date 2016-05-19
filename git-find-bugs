@@ -15,7 +15,7 @@ def get_revision(s):
     Parse the commit message and return a (repository, SHA) pair if there's a
     combo-layer reference to an original commit, or None if there isn't one.
     """
-    m = re.search(r"(?s).*\(From (?P<repo>.+) rev: (?P<sha>[0-9a-f]{40})\)", s)
+    m = re.search(r"(?s).*\((?:From )?(?P<repo>.+) rev: (?P<sha>[0-9a-f]{40})\)", s)
     if m:
         return (m.group("repo"), m.group("sha"))
     else:
@@ -53,6 +53,11 @@ class Tests(unittest.TestCase):
             (From OE-Core rev: ccc61cee8f097862640722abb9a9f53781efdac3)"""
         self.assertEqual(get_bugs(s), [9445])
         self.assertEqual(get_revision(s), ("OE-Core", "ccc61cee8f097862640722abb9a9f53781efdac3"))
+
+        s = """bitbake: bb.codeparser: track variable flag references
+    (Bitbake rev: bdeb3dcd7c92e62a7c079e7b27048c4114f24a3a)"""
+        self.assertEqual(get_bugs(s), [])
+        self.assertEqual(get_revision(s), ("Bitbake", "bdeb3dcd7c92e62a7c079e7b27048c4114f24a3a"))
 
         s = """[ YOCTO #1234 ] [YP#4321]"""
         self.assertEqual(get_bugs(s), [1234, 4321])
@@ -97,13 +102,15 @@ if __name__ == "__main__":
     bugs = defaultdict(list)
 
     for commit in repo.iter_commits("%s..%s" % (args.start, args.end)):
+        sha = get_revision(commit.message) or ("Poky", commit.hexsha)
         for bug in get_bugs(commit.message):
-            bugs[bug].append(commit.hexsha)
+            bugs[bug].append(sha)
 
     bugdata = fetch_bug_status(bugs.keys())
     for bugid, bug in sorted(bugdata.items()):
         if bug["status"] not in ("RESOLVED","VERIFIED", "CLOSED"):
             print "%s: %s" % (bug["status"], bug["summary"])
-            #print "Mentioned in %s %s" %
             print "%s/%d" % (serverurl, bugid)
+            print "Mentioned in:"
+            print "\n".join(map(lambda (a, b): "%s: %s" % (a, b), bugs[bugid]))
             print
