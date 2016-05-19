@@ -1,0 +1,57 @@
+#! /usr/bin/env python
+
+import os, sys, stat, subprocess
+from glob import glob
+from datetime import datetime
+
+# Copyright (c) 2009, Mark Pilgrim, All rights reserved.
+# <BSD two-clause license>
+# http://getpython3.com/diveintopython3/examples/humansize.py
+def approximate_size(size, a_kilobyte_is_1024_bytes=True):
+    SUFFIXES = {1000: ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
+                1024: ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']}
+
+    if size < 0:
+        raise ValueError('number must be non-negative')
+
+    multiple = 1024 if a_kilobyte_is_1024_bytes else 1000
+    for suffix in SUFFIXES[multiple]:
+        size /= multiple
+        if size < multiple:
+            return '{0:.1f} {1}'.format(size, suffix)
+
+    raise ValueError('number too large')
+
+# By Sharoon Thomas
+# http://stackoverflow.com/questions/6574329/how-can-i-produce-a-human-readable-difference-when-subtracting-two-unix-timestam
+def humanize_delta(date1, date2):
+    from dateutil.relativedelta import relativedelta
+    delta = relativedelta (date1, date2)
+    attrs = ['years', 'months', 'days', 'hours', 'minutes', 'seconds']
+    return ['%d %s' % (getattr(delta, attr), getattr(delta, attr) > 1 and attr or attr[:-1])
+                                    for attr in attrs if getattr(delta, attr)]
+
+if len(sys.argv) == 2:
+    f  = sys.argv[1]
+    winner = (f, os.path.getmtime(f), os.path.getsize(f))
+else:
+    deploy_dir = subprocess.check_output("bitbake -e | awk -F= -- '/^DEPLOY_DIR_IMAGE=/ { gsub(\"\\\"\",\"\",$2); print $2 }'", shell=True).strip()
+    # TODO check this worked
+    files = []
+    for f in map(lambda f: os.path.join(deploy_dir, f), os.listdir(deploy_dir)):
+        if not f.endswith(".hddimg"): continue
+        if os.path.islink(f) or not os.path.isfile(f): continue
+        files.append((f, os.path.getmtime(f), os.path.getsize(f)))
+    files.sort(cmp=lambda a,b: cmp(a[1], b[1]))
+    if files:
+        winner = files.pop()
+    else:
+        print "No images found in %s" % (deploy_dir)
+        sys.exit(1)
+
+print "Found:\t%s" % os.path.basename(winner[0])
+print "Size:\t%s" % approximate_size(winner[2], False)
+print "Age:\t%s" % ", ".join(humanize_delta(datetime.now(), datetime.fromtimestamp(winner[1])))
+
+#os.system("sudo hdparm -z /dev/sdg")
+os.system("image-usb-stick --force \"%s\"" % winner[0])
