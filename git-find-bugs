@@ -8,7 +8,7 @@ def get_bugs(s):
     """
     Parse the commit message and return a list of all bug numbers found.
     """
-    return [int(m.group("bug")) for m in re.finditer(r"\[ ?(YOCTO|YP) ?#?(?P<bug>[0-9]+) ?\]", s, re.IGNORECASE)]
+    return [int(m.group("bug")) for m in re.finditer(r"(YOCTO|YP) ?#?(?P<bug>[0-9]+)", s, re.IGNORECASE)]
 
 def get_revision(s):
     """
