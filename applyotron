@@ -80,7 +80,7 @@ class GMailPatch(PatchSource):
 
             # TODO Configure this in some way.
             # l:^ss_co means "has:orange-guillemet"
-            messages = server.gmail_search("in:inbox label:Yocto-OE-core l:^ss_co")
+            messages = server.gmail_search("in:inbox l:^ss_co")
             # TODO abort if no messages found
 
             # List of (msgid, mail body) pairs
