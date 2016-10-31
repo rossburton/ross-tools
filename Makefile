@@ -1,6 +1,8 @@
 all:
 
-INSTALL_DIR ?= ${HOME}/bin
+prefix = ${HOME}
+bindir = ${prefix}/bin
 
 install:
-	install -m 0755 $(shell git ls-files | grep -v Makefile) ${INSTALL_DIR}
+	mkdir --parents ${bindir}
+	install -m 0755 $(shell git ls-files | grep -v Makefile) ${bindir}
