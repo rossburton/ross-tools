@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import git, re, unittest
 
@@ -22,21 +22,23 @@ def get_revision(s):
         return None
 
 def fetch_bug_status(bugs):
-    import json, urllib, urllib2
+    import json, urllib.request, urllib.parse
     BATCH_SIZE = 100
     # Do this in chunks until urllib2 is replaced with something not arse and
     # we're doing POSTs.
     result = {}
+    # Ensure bugs is a list not a view so we can chop it up
+    bugs = list(bugs)
     while bugs:
         # TODO can't make permissive=true work to gracefully handle permission denied
         data = json.dumps([{"ids": bugs[:BATCH_SIZE],
                             "include_fields": ["id", "summary", "resolution", "status"]}])
-        req = urllib2.urlopen("%s/jsonrpc.cgi?method=Bug.get&params=%s" % (serverurl, urllib.quote(data)))
-        response = json.load(req)
+        req = urllib.request.urlopen("%s/jsonrpc.cgi?method=Bug.get&params=%s" % (serverurl, urllib.parse.quote(data)))
+        response = json.loads(req.read().decode("utf-8"))
         if response['result']:
             result.update({bug["id"]: bug for bug in response["result"]["bugs"]})
         else:
-            print response["error"]["message"]
+            print(response["error"]["message"])
             # TODO do... something?
             pass
         bugs = bugs[BATCH_SIZE:]
@@ -107,8 +109,9 @@ if __name__ == "__main__":
     bugdata = fetch_bug_status(bugs.keys())
     for bugid, bug in sorted(bugdata.items()):
         if bug["status"] not in ("RESOLVED","VERIFIED", "CLOSED"):
-            print "%s: %s" % (bug["status"], bug["summary"])
-            print "%s/%d" % (serverurl, bugid)
-            print "Mentioned in:"
-            print "\n".join(map(lambda (repo, sha, summary): "%s\n%s %s" % (summary, repo, sha), bugs[bugid]))
-            print
+            print("%s: %s" % (bug["status"], bug["summary"]))
+            print("%s/%d" % (serverurl, bugid))
+            print("Referenced in:")
+            for repo, sha, summary in bugs[bugid]:
+                print("%s\n%s %s" % (summary, repo, sha))
+            print()
