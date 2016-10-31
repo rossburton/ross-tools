@@ -88,8 +88,6 @@ class Tests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    #unittest.main()
-
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("start")
