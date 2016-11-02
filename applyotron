@@ -159,7 +159,7 @@ def main():
 
       patches = list(patch.enumerate())
       if patches:
-            print "Applying the following patches:"
+            print "Applying the following %d patches:" % (len(patches))
             print "\n ".join(patches)
       else:
             print "No patches found to apply."
