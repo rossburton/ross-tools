@@ -38,7 +38,7 @@ class ClipboardPatch(PatchSource):
                   if retcode:
                         raise subprocess.CalledProcessError(retcode, "git-mailinfo")
 
-                  process = subprocess.check_call(["git", "apply", "--check", patchfile.name])
+                  process = subprocess.check_call(["git", "apply", "--3way", "--check", patchfile.name])
 
       def enumerate(self):
             return (email.message_from_string(self.mail)["Subject"],)
