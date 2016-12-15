@@ -104,9 +104,8 @@ class GMailPatch(PatchSource):
             return (email.message_from_string(mail)["Subject"] for msgid, mail in self.patches)
 
       def apply(self):
-            server = self.connect()
+            # Apply the patches
             for msgid, mail in self.patches:
-                  import imapclient
                   # TODO: verify that the subject contains PATCH?
                   gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
                                            stdin=subprocess.PIPE)
@@ -115,22 +114,56 @@ class GMailPatch(PatchSource):
                   if retcode:
                         raise subprocess.CalledProcessError(retcode, 'git')
 
+            # If they all applied, clear the flags
+            server = self.connect()
+            for msgid, mail in self.patches:
+                  import imapclient
                   server.add_flags(msgid, imapclient.SEEN)
                   server.remove_flags(msgid, imapclient.FLAGGED)
                   server.delete_messages(msgid)
-
             server.close_folder()
             server.logout()
 
+def quiet_call(cmd):
+    """
+    Calls a command, reading both stdout and stderr.  If success no output is
+    visible, if error then an exception is thrown with the full output.
+    """
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+
 def wipe_sysroot():
-      subprocess.check_call(["wipe-sysroot"])
+    quiet_call(["wipe-sysroot"])
 
 def build(targets):
-      subprocess.check_call(["bitbake"] + targets)
+    subprocess.check_call(["bitbake"] + targets)
 
 def buildhistory():
-      subprocess.check_call(["buildhistory-diff"])
+    print("Comparing buildhistory...")
+    subprocess.check_call(["buildhistory-diff"])
 
+def checkout(branch):
+    quiet_call(["git", "checkout", branch])
+
+def apply_on_branch(patch):
+    """
+    Create a new branch with the patches on and return the name of this branch,
+    whilst remaining on HEAD.
+    """
+    import random
+    # Not pretty but mostly works
+    branchname = "applyotron-%04d" % random.randint(0,9999)
+
+    # TODO: have a finally here to abort the apply and delete working branch
+    head = subprocess.check_output(["git", "symbolic-ref", "--short", "HEAD"]).decode().strip()
+    quiet_call(["git", "checkout", "-b", branchname])
+    patch.apply()
+    checkout(head)
+    return head, branchname
+
+def merge(head, wip):
+    checkout(head)
+    quiet_call(["git", "merge", wip])
+    quiet_call(["git", "branch", "--delete", wip])
 
 def main():
       import argparse
@@ -174,10 +207,18 @@ def main():
             # TODO Exception handling. If I control-C applyotron the
             # childs keep on running. This is bad.
             targets = args.target
-            build(targets)
-            patch.apply()
+
+            head, wip = apply_on_branch(patch)
+
+            checkout(head)
             wipe_sysroot()
             build(targets)
+
+            checkout(wip)
+            wipe_sysroot()
+            build(targets)
+
+            merge(head, wip)
             buildhistory()
       else:
             patch.apply()
