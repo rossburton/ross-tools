@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
 # MIT licensed
@@ -41,7 +41,7 @@ class ClipboardPatch(PatchSource):
                   process = subprocess.check_call(["git", "apply", "--3way", "--check", patchfile.name])
 
       def enumerate(self):
-            return (email.message_from_string(self.mail)["Subject"],)
+            return (email.message_from_bytes(self.mail)["Subject"],)
 
       def apply(self):
             gitam = subprocess.Popen(["git", "am", "--3way", "--signoff", "--whitespace=nowarn"],
@@ -86,13 +86,13 @@ class GMailPatch(PatchSource):
             # List of (msgid, mail body) pairs
             self.patches = []
             response = server.fetch(messages, ['ENVELOPE RFC822'])
-            for msgid, data in sorted(response.iteritems(), key=lambda d: d[1]['ENVELOPE'].date):
-                  self.patches.append((msgid, data['RFC822']))
+            for msgid, data in sorted(response.items(), key=lambda d: d[1][b'ENVELOPE'].date):
+                  self.patches.append((msgid, data[b'RFC822']))
 
       def connect(self):
-            import ConfigParser, imapclient
+            import configparser, imapclient
 
-            cp = ConfigParser.SafeConfigParser()
+            cp = configparser.SafeConfigParser()
             cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
             server = imapclient.IMAPClient("imap.gmail.com", ssl=True, use_uid=True)
@@ -101,7 +101,7 @@ class GMailPatch(PatchSource):
             return server
 
       def enumerate(self):
-            return (email.message_from_string(mail)["Subject"] for msgid, mail in self.patches)
+            return (email.message_from_bytes(mail)["Subject"] for msgid, mail in self.patches)
 
       def apply(self):
             # Apply the patches
@@ -187,16 +187,16 @@ def main():
       elif args.mail:
             patch = GMailPatch()
       else:
-            print "No patch source selected"
+            print("No patch source selected")
             sys.exit(os.EX_USAGE)
 
       patches = list(patch.enumerate())
       if patches:
-            print "Applying the following %d patches:" % (len(patches))
+            print("Applying the following %d patches:" % (len(patches)))
             for p in patches:
-                print " %s" % p
+                print(" %s" % p)
       else:
-            print "No patches found to apply."
+            print("No patches found to apply.")
             sys.exit(os.EX_NOINPUT)
 
       if args.list:
