@@ -131,8 +131,13 @@ def quiet_call(cmd):
     """
     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
-def wipe_sysroot():
-    quiet_call(["wipe-sysroot"])
+import shutil
+if shutil.which("wipe-sysroot"):
+    def wipe_sysroot():
+        quiet_call(["wipe-sysroot"])
+else:
+    def wipe_sysroot():
+        pass
 
 def build(targets):
     subprocess.check_call(["bitbake"] + targets)
