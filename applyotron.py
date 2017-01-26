@@ -208,6 +208,10 @@ def main():
             # childs keep on running. This is bad.
             targets = args.target
 
+            # Verify that the targets we've got actually build
+            print ("Checking targets are buildable...")
+            build(["--dry-run", "--quiet"] + targets)
+
             head, wip = apply_on_branch(patch)
 
             checkout(head)
