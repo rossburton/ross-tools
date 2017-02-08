@@ -77,6 +77,8 @@ class RevisionsPatch(PatchSource):
 
 class GMailPatch(PatchSource):
       def __init__(self):
+            import collections
+
             server = self.connect()
 
             # TODO Configure this in some way.
@@ -85,10 +87,10 @@ class GMailPatch(PatchSource):
             # TODO abort if no messages found
 
             # List of (msgid, mail body) pairs
-            self.patches = []
+            self.patches = collections.OrderedDict()
             response = server.fetch(messages, ['ENVELOPE RFC822'])
             for msgid, data in sorted(response.items(), key=lambda d: d[1][b'ENVELOPE'].date):
-                  self.patches.append((msgid, data[b'RFC822']))
+                  self.patches[msgid] = data[b'RFC822']
 
       def connect(self):
             import configparser, imapclient
@@ -102,11 +104,11 @@ class GMailPatch(PatchSource):
             return server
 
       def enumerate(self):
-            return (email.message_from_bytes(mail)["Subject"] for msgid, mail in self.patches)
+            return (email.message_from_bytes(mail)["Subject"] for mail in self.patches.values())
 
       def apply(self):
             # Apply the patches
-            for msgid, mail in self.patches:
+            for mail in self.patches.values():
                   # TODO: verify that the subject contains PATCH?
                   gitam = subprocess.Popen(['git', 'am', '--3way', '--signoff', '--whitespace=nowarn'],
                                            stdin=subprocess.PIPE)
@@ -116,12 +118,12 @@ class GMailPatch(PatchSource):
                         raise subprocess.CalledProcessError(retcode, 'git')
 
             # If they all applied, clear the flags
+            import imapclient
             server = self.connect()
-            for msgid, mail in self.patches:
-                  import imapclient
-                  server.add_flags(msgid, imapclient.SEEN)
-                  server.remove_flags(msgid, imapclient.FLAGGED)
-                  server.delete_messages(msgid)
+            msgids = list(self.patches.keys())
+            server.add_flags(msgids, imapclient.SEEN)
+            server.remove_flags(msgids, imapclient.FLAGGED)
+            server.delete_messages(msgids)
             server.close_folder()
             server.logout()
 
