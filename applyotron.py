@@ -68,7 +68,8 @@ class RevisionsPatch(PatchSource):
             self.revs = revisions
 
       def enumerate(self):
-            return subprocess.check_output(["git", "show", "--no-patch", "--format=format:%s"] + self.revs).split("\n")
+            output = subprocess.check_output(["git", "show", "--no-patch", "--format=format:%s"] + self.revs)
+            return output.decode("utf-8").split("\n")
 
       def apply(self):
             subprocess.check_call(["git", "cherry-pick", "--signoff"] + self.revs)
