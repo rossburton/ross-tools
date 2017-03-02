@@ -1,6 +1,6 @@
 #! /bin/sh
 
 for PID in $(ps -C Cooker -o pid=); do
-	pstree -p $PID
+	pstree -p -l $PID
 	echo
 done
