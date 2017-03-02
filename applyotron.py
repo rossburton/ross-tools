@@ -118,11 +118,13 @@ class GMailPatch(PatchSource):
                         raise subprocess.CalledProcessError(retcode, 'git')
 
             # If they all applied, clear the flags
+            print("Updating mail...")
             import imapclient
             server = self.connect()
             msgids = list(self.patches.keys())
             server.add_flags(msgids, imapclient.SEEN)
             server.remove_flags(msgids, imapclient.FLAGGED)
+            server.remove_gmail_labels(msgids, ("Patches/Queued",))
             server.delete_messages(msgids)
             server.close_folder()
             server.logout()
