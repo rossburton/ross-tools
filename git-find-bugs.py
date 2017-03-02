@@ -97,7 +97,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     from collections import defaultdict
-    repo = git.Repo(".")
+    repo = git.Repo(".", search_parent_directories=True)
     # Dictionary of bug ID to list of commits that mention it
     bugs = defaultdict(list)
 
