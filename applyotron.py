@@ -216,11 +216,11 @@ def main():
             # childs keep on running. This is bad.
             targets = args.target
 
+            head, wip = apply_on_branch(patch)
+
             # Verify that the targets we've got actually build
             print ("Checking targets are buildable...")
             build(["--dry-run", "--quiet"] + targets)
-
-            head, wip = apply_on_branch(patch)
 
             checkout(head)
             wipe_sysroot()
