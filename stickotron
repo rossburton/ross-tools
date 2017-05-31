@@ -39,7 +39,7 @@ else:
     # TODO check this worked
     files = []
     for f in map(lambda f: os.path.join(deploy_dir, f), os.listdir(deploy_dir)):
-        if not f.endswith(".hddimg"): continue
+        if not (f.endswith(".hddimg") or f.endswith(".wic")): continue
         if os.path.islink(f) or not os.path.isfile(f): continue
         files.append((f, os.path.getmtime(f), os.path.getsize(f)))
     files.sort(cmp=lambda a,b: cmp(a[1], b[1]))
