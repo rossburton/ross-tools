@@ -39,17 +39,19 @@ def do_build(args):
         subprocess.check_call(["git", "checkout", "--quiet", commit.hexsha])
         subprocess.check_call(["bitbake"] + args.targets)
 
-    def builddiff(counter, commit):
-        with open("buildhistory-%d-%s.log" % (counter, commit.hexsha), "wt") as log:
-            log.write("commit %s\n\n" % commit.hexsha)
-            log.write(commit.message)
+    def builddiff(counter, prev_commit, this_commit):
+        with open("buildhistory-%d-%s.log" % (counter, this_commit.hexsha), "wt") as log:
+            for commit in repo.iter_commits("%s...%s" % (prev_commit, this_commit), reverse=True):
+                log.write("commit %s\n%s\n" % (commit.hexsha, commit.message))
             log.write("\n")
             log.write(subprocess.check_output("buildhistory-diff", universal_newlines=True))
 
     bitbake(shas[0])
+    prev_commit = shas[0]
     for counter, commit in enumerate(shas[1:], start=1):
         bitbake(commit)
-        builddiff(counter, commit)
+        builddiff(counter, prev_commit, commit)
+        prev_commit = commit
 
 
 
