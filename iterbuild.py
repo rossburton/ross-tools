@@ -47,8 +47,7 @@ def do_build(args):
             log.write(subprocess.check_output("buildhistory-diff", universal_newlines=True))
 
     bitbake(shas[0])
-    prev_commit = shas[0]
-    for counter, commit in enumerate(shas[1:], start=1):
+    for counter, (commit, prev_commit) in enumerate(zip(shas[1:], shas), start=1):
         bitbake(commit)
         builddiff(counter, prev_commit, commit)
         prev_commit = commit
