@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
 # MIT licensed
@@ -7,16 +7,17 @@ import os
 import sys
 import argparse
 import imapclient
-import ConfigParser
+import configparser
 import subprocess
 
-cp = ConfigParser.SafeConfigParser()
+cp = configparser.SafeConfigParser()
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
 parser.add_argument("-c", "--commits", help="Number of commits back to go in history", type=int, default=10000)
 parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true", default=False)
+parser.add_argument("-d", "--dryrun", help="Dry-run only", action="store_true", default=False)
 args = parser.parse_args()
 
 verbose = args.verbose
@@ -35,7 +36,7 @@ def get_commits(branch, num_commits):
             continue
         rev, desc = line.split(" ", 1)
 
-        if verbose: print "Storing commit '%s'" % desc
+        if verbose: print("Storing commit '%s'" % desc)
         revdata[desc] = rev
     return revdata
 
@@ -45,31 +46,32 @@ def match_messages(server, folder, search=None):
         messages = server.gmail_search(search)
     else:
         messages = server.search()
-    print "Fetched %d messages" % len(messages)
+    print("Fetched %d messages" % len(messages))
 
     response = server.fetch(messages, ['ENVELOPE'])
-    for msgid, data in response.iteritems():
-        if "ENVELOPE" not in data:
-            print "Skipping %s without ENVELOPE" % msgid
+    for msgid, data in response.items():
+        if b"ENVELOPE" not in data:
+            print("Skipping %s without ENVELOPE" % msgid)
             continue
 
-        subject = data["ENVELOPE"].subject
+        # Assume subject is UTF-8
+        subject = data[b"ENVELOPE"].subject.decode("utf-8")
         if "]" in subject:
             subject = subject.rsplit("]", 1)[1].strip()
 
-        if verbose: print "Searching for subject '%s'" % subject
+        if verbose: print("Searching for subject '%s'" % subject)
         if subject in revdata:
             if verbose:
-                print "Found match for %s" % subject
+                print("Found match for %s" % subject)
         else:
             messages.remove(msgid)
 
-    print "Found %d merged patches" % len(messages)
+    print("Found %d merged patches" % len(messages))
     return messages
 
 
 if not check_git_workdir():
-    print "handlepatches wasn't ran inside a git clone, aborting"
+    print("handlepatches wasn't ran inside a git clone, aborting")
     sys.exit(1)
 
 revdata = get_commits(args.branch, args.commits)
@@ -77,26 +79,30 @@ revdata = get_commits(args.branch, args.commits)
 server = imapclient.IMAPClient(cp.get("Config", "IMAPServer"), ssl=True)
 server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
 
-print "oe-core..."
+print("oe-core...")
 messages = match_messages(server, "INBOX", "label:Yocto-OE-core in:inbox")
-server.add_flags(messages, imapclient.SEEN)
-server.remove_flags(messages, imapclient.FLAGGED)
-server.delete_messages(messages)
+if not args.dryrun:
+    server.add_flags(messages, imapclient.SEEN)
+    server.remove_flags(messages, imapclient.FLAGGED)
+    server.delete_messages(messages)
 
-print "Poky..."
+print("Poky...")
 messages = match_messages(server, "INBOX", "label:Yocto-Poky in:inbox")
-server.add_flags(messages, imapclient.SEEN)
-server.remove_flags(messages, imapclient.FLAGGED)
-server.delete_messages(messages)
+if not args.dryrun:
+    server.add_flags(messages, imapclient.SEEN)
+    server.remove_flags(messages, imapclient.FLAGGED)
+    server.delete_messages(messages)
 
-print "Rework..."
+print("Rework...")
 messages = match_messages(server, "[Gmail]/All Mail", "label:Patches/Rework")
-server.add_flags(messages, imapclient.SEEN)
-server.remove_flags(messages, imapclient.FLAGGED)
-server.remove_gmail_labels(messages, "Patches/Rework")
+if not args.dryrun:
+    server.add_flags(messages, imapclient.SEEN)
+    server.remove_flags(messages, imapclient.FLAGGED)
+    server.remove_gmail_labels(messages, "Patches/Rework")
 
-print "Later..."
+print("Later...")
 messages = match_messages(server, "[Gmail]/All Mail", "label:Patches/Later")
-server.add_flags(messages, imapclient.SEEN)
-server.remove_flags(messages, imapclient.FLAGGED)
-server.remove_gmail_labels(messages, "Patches/Later")
+if not args.dryrun:
+    server.add_flags(messages, imapclient.SEEN)
+    server.remove_flags(messages, imapclient.FLAGGED)
+    server.remove_gmail_labels(messages, "Patches/Later")
