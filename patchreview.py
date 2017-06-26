@@ -41,8 +41,8 @@ def patchreview(patches):
     # General pattern: start of line, optional whitespace, tag with optional
     # hyphen or spaces, maybe a colon, some whitespace, then the value, all case
     # insensitive.
-    sob_re = re.compile(r"^[\t ]*(Signed[- ]off[- ]by:?)[\t ]*(.+)", re.IGNORECASE | re.MULTILINE)
-    status_re = re.compile(r"^[\t ]*(Upstream[- ]Status:?)[\t ]*(\w*)", re.IGNORECASE | re.MULTILINE)
+    sob_re = re.compile(r"^[\t ]*(Signed[-_ ]off[-_ ]by:?)[\t ]*(.+)", re.IGNORECASE | re.MULTILINE)
+    status_re = re.compile(r"^[\t ]*(Upstream[-_ ]Status:?)[\t ]*(\w*)", re.IGNORECASE | re.MULTILINE)
     status_values = ("accepted", "pending", "inappropriate", "backport", "submitted", "denied")
     cve_tag_re = re.compile(r"^[\t ]*(CVE:)[\t ]*(.*)", re.IGNORECASE | re.MULTILINE)
     cve_re = re.compile(r"cve-[0-9]{4}-[0-9]{4,6}", re.IGNORECASE)
