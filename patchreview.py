@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # TODO
 # - option to just list all broken files
@@ -33,7 +33,7 @@ def blame_patch(patch):
     return subprocess.check_output(("git", "log",
                                     "--follow", "--find-renames", "--diff-filter=A",
                                     "--format=%s (%aN <%aE>)",
-                                    "--", patch)).splitlines()
+                                    "--", patch)).decode("utf-8").splitlines()
 
 def patchreview(patches):
     import re
@@ -53,7 +53,7 @@ def patchreview(patches):
         result = Result()
         results[patch] = result
 
-        content = file(patch).read()
+        content = open(patch, encoding='ascii', errors='ignore').read()
 
         # Find the Signed-off-by tag
         match = sob_re.search(content)
@@ -131,31 +131,31 @@ def analyse(results, want_blame=False, verbose=True):
         if r.missing_sob:
             need_blame = True
             if verbose:
-                print "Missing Signed-off-by tag (%s)" % patch
+                print("Missing Signed-off-by tag (%s)" % patch)
         # TODO: disable this for now as too much fails
         if False and r.malformed_sob:
             need_blame = True
             if verbose:
-                print "Malformed Signed-off-by '%s' (%s)" % (r.malformed_sob, patch)
+                print("Malformed Signed-off-by '%s' (%s)" % (r.malformed_sob, patch))
         if r.missing_cve:
             need_blame = True
             if verbose:
-                print "Missing CVE tag (%s)" % patch
+                print("Missing CVE tag (%s)" % patch)
         if r.missing_upstream_status:
             need_blame = True
             if verbose:
-                print "Missing Upstream-Status tag (%s)" % patch
+                print("Missing Upstream-Status tag (%s)" % patch)
         if r.malformed_upstream_status:
             need_blame = True
             if verbose:
-                print "Malformed Upstream-Status '%s' (%s)" % (r.malformed_upstream_status, patch)
+                print("Malformed Upstream-Status '%s' (%s)" % (r.malformed_upstream_status, patch))
         if r.unknown_upstream_status:
             need_blame = True
             if verbose:
-                print "Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch)
+                print("Unknown Upstream-Status value '%s' (%s)" % (r.upstream_status, patch))
 
         if want_blame and need_blame:
-            print "\n".join(blame_patch(patch)) + "\n"
+            print("\n".join(blame_patch(patch)) + "\n")
 
     def percent(num):
         try:
@@ -164,9 +164,9 @@ def analyse(results, want_blame=False, verbose=True):
             return "N/A"
 
     if verbose:
-        print
+        print()
 
-    print """Total patches found: %d
+    print("""Total patches found: %d
 Patches missing Signed-off-by: %s
 Patches with malformed Signed-off-by: %s
 Patches missing CVE: %s
@@ -178,17 +178,17 @@ Patches in Pending state: %s""" % (total_patches,
                                    percent(missing_cve),
                                    percent(missing_status),
                                    percent(malformed_status),
-                                   percent(pending_patches))
+                                   percent(pending_patches)))
 
 
 
 def histogram(results):
     from toolz import recipes, dicttoolz
     import math
-    counts = recipes.countby(lambda r: r.upstream_status, results.itervalues())
+    counts = recipes.countby(lambda r: r.upstream_status, results.values())
     bars = dicttoolz.valmap(lambda v: "#" * int(math.ceil(float(v) / len(results) * 100)), counts)
     for k in bars:
-        print "%-20s %s (%d)" % (k.capitalize() if k else "No status", bars[k], counts[k])
+        print("%-20s %s (%d)" % (k.capitalize() if k else "No status", bars[k], counts[k]))
 
 
 if __name__ == "__main__":
@@ -203,9 +203,9 @@ if __name__ == "__main__":
 
     if args.directory:
         os.chdir(args.directory)
-    patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).split()
+    patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).decode("utf-8").split()
     results = patchreview(patches)
     analyse(results, want_blame=args.blame, verbose=args.verbose)
     if args.histogram:
-        print
+        print()
         histogram(results)
