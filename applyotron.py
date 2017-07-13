@@ -188,6 +188,10 @@ def main():
       args.add_argument("target", nargs="*", help="targets to build")
       args = args.parse_args()
 
+      if args.list and args.target:
+            print("You specified --list and some targets to build, but I can't do both.")
+            sys.exit(os.EX_USAGE)
+
       if args.clipboard:
             patch = ClipboardPatch()
       elif args.file:
@@ -221,7 +225,7 @@ def main():
             head, wip = apply_on_branch(patch)
 
             # Verify that the targets we've got actually build
-            print ("Checking targets are buildable...")
+            print("Checking targets are buildable...")
             build(["--dry-run", "--quiet"] + targets)
 
             checkout(head)
