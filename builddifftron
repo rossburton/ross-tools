@@ -6,6 +6,12 @@ NEWREV=$1
 shift
 TARGETS="$@"
 
+# Verify that the the user didn't forget to specify a commit ID
+if ! git rev-parse --quiet --verify "$NEWREV^{commit}" >/dev/null; then
+        echo "$NEWREV doesn't identify a commit"
+        exit 1
+fi
+
 echo Doing initial build...
 bitbake -k $TARGETS
 
