@@ -1,0 +1,15 @@
+#! /bin/bash
+
+set -e
+
+NEWREV=$1
+shift
+TARGETS="$@"
+
+echo Doing initial build...
+bitbake -k $TARGETS
+
+echo Moving to $NEWREV for second build...
+git checkout $NEWREV
+bitbake -k $TARGETS
+buildhistory-diff
