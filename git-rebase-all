@@ -31,11 +31,10 @@ get_upstream() {
 COUNT=0
 FAILED=0
 
-BRANCHES=$(git show-ref --heads | cut -d ' ' -f 2)
-for B in $BRANCHES; do
+BRANCHES=$(git for-each-ref refs/heads --format='%(refname:strip=2)')
+for NAME in $BRANCHES; do
     COUNT=$((COUNT + 1))
-    NAME=${B##refs/heads/}
-
+ 
     check_blacklisted $NAME || continue
 
     git checkout --quiet $NAME || continue
