@@ -35,8 +35,8 @@ def blame_patch(patch):
                                     "--format=%s (%aN <%aE>)",
                                     "--", patch)).decode("utf-8").splitlines()
 
-def patchreview(patches):
-    import re
+def patchreview(path, patches):
+    import re, os.path
 
     # General pattern: start of line, optional whitespace, tag with optional
     # hyphen or spaces, maybe a colon, some whitespace, then the value, all case
@@ -53,7 +53,7 @@ def patchreview(patches):
         result = Result()
         results[patch] = result
 
-        content = open(patch, encoding='ascii', errors='ignore').read()
+        content = open(os.path.join(path, patch), encoding='ascii', errors='ignore').read()
 
         # Find the Signed-off-by tag
         match = sob_re.search(content)
@@ -200,10 +200,8 @@ if __name__ == "__main__":
     args.add_argument("directory", nargs="?", help="directory to scan")
     args = args.parse_args()
 
-    if args.directory:
-        os.chdir(args.directory)
-    patches = subprocess.check_output(("git", "ls-files", "*.patch", "*.diff")).decode("utf-8").split()
-    results = patchreview(patches)
+    patches = subprocess.check_output(("git", "-C", args.directory, "ls-files", "*.patch", "*.diff")).decode("utf-8").split()
+    results = patchreview(args.directory, patches)
     analyse(results, want_blame=args.blame, verbose=args.verbose)
     if args.histogram:
         print()
