@@ -122,6 +122,8 @@ def analyse(results, want_blame=False, verbose=True):
             missing_status += 1
         if r.malformed_upstream_status or r.unknown_upstream_status:
             malformed_status += 1
+            # Count patches with no status as pending
+            pending_patches +=1
         if r.missing_cve:
             missing_cve += 1
         if r.upstream_status == "pending":
