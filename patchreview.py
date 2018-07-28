@@ -5,6 +5,7 @@
 # - test suite
 # - validate signed-off-by
 
+status_values = ("accepted", "pending", "inappropriate", "backport", "submitted", "denied")
 
 class Result:
     # Whether the patch has an Upstream-Status or not
@@ -43,7 +44,6 @@ def patchreview(path, patches):
     # insensitive.
     sob_re = re.compile(r"^[\t ]*(Signed[-_ ]off[-_ ]by:?)[\t ]*(.+)", re.IGNORECASE | re.MULTILINE)
     status_re = re.compile(r"^[\t ]*(Upstream[-_ ]Status:?)[\t ]*(\w*)", re.IGNORECASE | re.MULTILINE)
-    status_values = ("accepted", "pending", "inappropriate", "backport", "submitted", "denied")
     cve_tag_re = re.compile(r"^[\t ]*(CVE:)[\t ]*(.*)", re.IGNORECASE | re.MULTILINE)
     cve_re = re.compile(r"cve-[0-9]{4}-[0-9]{4,6}", re.IGNORECASE)
 
@@ -199,12 +199,35 @@ if __name__ == "__main__":
     args.add_argument("-b", "--blame", action="store_true", help="show blame for malformed patches")
     args.add_argument("-v", "--verbose", action="store_true", help="show per-patch results")
     args.add_argument("-g", "--histogram", action="store_true", help="show patch histogram")
-    args.add_argument("directory", nargs="?", help="directory to scan")
+    args.add_argument("-j", "--json", help="update JSON")
+    args.add_argument("directory", help="directory to scan")
     args = args.parse_args()
 
     patches = subprocess.check_output(("git", "-C", args.directory, "ls-files", "*.patch", "*.diff")).decode("utf-8").split()
     results = patchreview(args.directory, patches)
     analyse(results, want_blame=args.blame, verbose=args.verbose)
+
+    if args.json:
+        import json, os.path, collections
+        if os.path.isfile(args.json):
+            data = json.load(open(args.json))
+        else:
+            data = []
+
+        row = collections.Counter()
+        row["total"] = len(results)
+        row["date"] = subprocess.check_output(["git", "-C", args.directory, "show", "-s", "--pretty=format:%cd", "--date=unix"]).decode("utf-8").strip()
+        for r in results.values():
+            if r.upstream_status in status_values:
+                row[r.upstream_status] += 1
+            if r.malformed_upstream_status or r.missing_upstream_status:
+                row['malformed-upstream-status'] += 1
+            if r.malformed_sob or r.missing_sob:
+                row['malformed-sob'] += 1
+
+        data.append(row)
+        json.dump(data, open(args.json, "w"))
+
     if args.histogram:
         print()
         histogram(results)
