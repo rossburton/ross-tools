@@ -26,6 +26,8 @@ while date < now:
     env["NEXTDATE"] = date.shift(**shift).format("YYYY-MM-DD")
 
     sha = subprocess.check_output(["git", "rev-list", tip, "--before", date.format("YYYY-MM-DD"), "--max-count=1"]).decode("ascii").strip()
+    env["SHA"] = sha
+
     if args.checkout:
         # TODO use worktree?
         subprocess.check_output(["git", "checkout", "--quiet", sha])
