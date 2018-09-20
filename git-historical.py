@@ -7,14 +7,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--checkout", action="store_true", default=False)
 parser.add_argument("-s", "--since", required=True)
 parser.add_argument("-b", "--branch", default="HEAD")
+parser.add_argument("-j", "--jump", choices=('day', 'week', 'month'), default='month')
 parser.add_argument('command', nargs=argparse.REMAINDER)
 args = parser.parse_args()
 
 date = then = arrow.get(args.since, "YYYY-MM-DD")
 tip = subprocess.check_output(["git", "rev-parse", args.branch]).decode("ascii").strip()
-
-# TODO argparse this
-shift = {"months": +1}
+shift = { args.jump + "s": +1 }
 
 # TODO save/restore current checkout
 
