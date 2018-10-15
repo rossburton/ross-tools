@@ -203,7 +203,7 @@ if __name__ == "__main__":
     args.add_argument("directory", help="directory to scan")
     args = args.parse_args()
 
-    patches = subprocess.check_output(("git", "-C", args.directory, "ls-files", "*.patch", "*.diff")).decode("utf-8").split()
+    patches = subprocess.check_output(("git", "-C", args.directory, "ls-files", "recipes-*/**/*.patch", "recipes-*/**/*.diff")).decode("utf-8").split()
     results = patchreview(args.directory, patches)
     analyse(results, want_blame=args.blame, verbose=args.verbose)
 
