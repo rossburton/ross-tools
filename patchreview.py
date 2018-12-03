@@ -50,10 +50,12 @@ def patchreview(path, patches):
     results = {}
 
     for patch in patches:
-        result = Result()
-        results[patch] = result
 
-        content = open(os.path.join(path, patch), encoding='ascii', errors='ignore').read()
+        fullpath = os.path.join(path, patch)
+        result = Result()
+        results[fullpath] = result
+
+        content = open(fullpath, encoding='ascii', errors='ignore').read()
 
         # Find the Signed-off-by tag
         match = sob_re.search(content)
