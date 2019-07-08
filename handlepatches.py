@@ -16,6 +16,7 @@ cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 parser = argparse.ArgumentParser()
 parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
 parser.add_argument("-c", "--commits", help="Number of commits back to go in history", type=int, default=10000)
+parser.add_argument("-l", "--list", help="List patches found", action="store_true", default=False)
 parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true", default=False)
 parser.add_argument("-d", "--dryrun", help="Dry-run only", action="store_true", default=False)
 args = parser.parse_args()
@@ -61,7 +62,7 @@ def match_messages(server, folder, search=None):
 
         if verbose: print("Searching for subject '%s'" % subject)
         if subject in revdata:
-            if verbose:
+            if verbose or args.list:
                 print("Found match for %s" % subject)
         else:
             messages.remove(msgid)
