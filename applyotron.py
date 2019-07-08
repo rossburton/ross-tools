@@ -95,7 +95,7 @@ class GMailPatch(PatchSource):
       def connect(self):
             import configparser, imapclient
 
-            cp = configparser.SafeConfigParser()
+            cp = configparser.ConfigParser()
             cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
             server = imapclient.IMAPClient("imap.gmail.com", ssl=True, use_uid=True)
