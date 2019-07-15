@@ -10,7 +10,7 @@ import imapclient
 import configparser
 import subprocess
 
-cp = configparser.SafeConfigParser()
+cp = configparser.ConfigParser()
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
 parser = argparse.ArgumentParser()
