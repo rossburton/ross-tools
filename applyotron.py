@@ -184,7 +184,7 @@ def main():
       group.add_argument("-c", "--clipboard", action="store_true", help="Take patch from clipboard")
       group.add_argument("-f", "--file", action="append", help="Take patch from file")
       group.add_argument("-r", "--revisions", action="append", help="Cherry-pick revision range")
-      group.add_argument("-m", "--mail", action="store_true", help="Take patches from GMail")
+      group.add_argument("-g", "--gmail", action="store_true", help="Take patches from GMail")
       args.add_argument("target", nargs="*", help="targets to build")
       args = args.parse_args()
 
@@ -198,7 +198,7 @@ def main():
             patch = FilePatch(args.file)
       elif args.revisions:
             patch = RevisionsPatch(args.revisions)
-      elif args.mail:
+      elif args.gmail:
             patch = GMailPatch()
       else:
             print("No patch source selected")
