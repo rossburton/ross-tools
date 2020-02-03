@@ -3,6 +3,7 @@
 # Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
 # MIT licensed
 
+import re
 import os
 import sys
 import argparse
@@ -28,6 +29,9 @@ def check_git_workdir():
     return subprocess.call(["git", "rev-parse", "--is-inside-work-tree"],
                            stdout=devnull, stderr=subprocess.STDOUT) == 0
 
+def normalise(s):
+    return " ".join(s.split())
+
 def get_commits(branch, num_commits):
     revlist = subprocess.Popen("git log %s --format=oneline -n %d" % (branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
     revlist = revlist.decode("utf-8")
@@ -38,7 +42,7 @@ def get_commits(branch, num_commits):
         rev, desc = line.split(" ", 1)
 
         if verbose: print("Storing commit '%s'" % desc)
-        revdata[desc] = rev
+        revdata[normalise(desc)] = rev
     return revdata
 
 def match_messages(server, folder, search=None):
@@ -49,6 +53,7 @@ def match_messages(server, folder, search=None):
         messages = server.search()
     print("Fetched %d messages" % len(messages))
 
+    found = []
     response = server.fetch(messages, ['ENVELOPE'])
     for msgid, data in response.items():
         if b"ENVELOPE" not in data:
@@ -56,19 +61,19 @@ def match_messages(server, folder, search=None):
             continue
 
         # Assume subject is UTF-8
-        subject = data[b"ENVELOPE"].subject.decode("utf-8")
+        subject = normalise(data[b"ENVELOPE"].subject.decode("utf-8"))
+        subject = re.sub(r".? patchwork:", "", subject)
         if "]" in subject:
             subject = subject.rsplit("]", 1)[1].strip()
 
         if verbose: print("Searching for subject '%s'" % subject)
         if subject in revdata:
+            found.append(msgid)
             if verbose or args.list:
                 print("Found match for %s" % subject)
-        else:
-            messages.remove(msgid)
 
-    print("Found %d merged patches" % len(messages))
-    return messages
+    print("Found %d merged patches" % len(found))
+    return found
 
 
 if not check_git_workdir():
@@ -78,7 +83,7 @@ if not check_git_workdir():
 revdata = get_commits(args.branch, args.commits)
 
 server = imapclient.IMAPClient(cp.get("Config", "IMAPServer"), ssl=True)
-server.login(cp.get("Config", "IMAPUSer"), cp.get("Config", "IMAPPassword"))
+server.login(cp.get("Config", "IMAPUser"), cp.get("Config", "IMAPPassword"))
 
 print("oe-core...")
 messages = match_messages(server, "INBOX", "label:Yocto-OE-core in:inbox")
