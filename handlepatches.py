@@ -86,29 +86,8 @@ server = imapclient.IMAPClient(cp.get("Config", "IMAPServer"), ssl=True)
 server.login(cp.get("Config", "IMAPUser"), cp.get("Config", "IMAPPassword"))
 
 print("oe-core...")
-messages = match_messages(server, "INBOX", "label:Yocto-OE-core in:inbox")
+messages = match_messages(server, "[Gmail]/All Mail", "label:Yocto-oe-core")
 if not args.dryrun:
     server.add_flags(messages, imapclient.SEEN)
     server.remove_flags(messages, imapclient.FLAGGED)
-    server.delete_messages(messages)
-
-print("Poky...")
-messages = match_messages(server, "INBOX", "label:Yocto-Poky in:inbox")
-if not args.dryrun:
-    server.add_flags(messages, imapclient.SEEN)
-    server.remove_flags(messages, imapclient.FLAGGED)
-    server.delete_messages(messages)
-
-print("Rework...")
-messages = match_messages(server, "[Gmail]/All Mail", "label:Patches/Rework")
-if not args.dryrun:
-    server.add_flags(messages, imapclient.SEEN)
-    server.remove_flags(messages, imapclient.FLAGGED)
-    server.remove_gmail_labels(messages, "Patches/Rework")
-
-print("Later...")
-messages = match_messages(server, "[Gmail]/All Mail", "label:Patches/Later")
-if not args.dryrun:
-    server.add_flags(messages, imapclient.SEEN)
-    server.remove_flags(messages, imapclient.FLAGGED)
-    server.remove_gmail_labels(messages, "Patches/Later")
+    #server.delete_messages(messages)
