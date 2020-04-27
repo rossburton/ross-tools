@@ -1,0 +1,8 @@
+#! /bin/sh
+
+# Aggressively turn this directory into a fresh git repo
+
+rm -rf .git
+git init .
+git add .
+git commit -a -m "Initial import"
