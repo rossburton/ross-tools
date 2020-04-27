@@ -1,0 +1,16 @@
+#! /bin/sh
+
+# Remove all sstate that hasn't been accessed for N days.
+
+# Where sstate cache is
+SSTATE=$HOME/Yocto/sstate
+# How may days ago the sstate has to be accessed before removing
+DAYS=90
+
+echo Before:
+du -sh $SSTATE
+
+find $SSTATE -type f -atime +$DAYS -delete
+
+echo After:
+du -sh $SSTATE
