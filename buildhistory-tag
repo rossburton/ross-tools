@@ -1,0 +1,9 @@
+#! /bin/sh
+
+# Add a tag in the buildhistory tree
+
+TAG="${1:-temptag}"
+
+eval $(bitbake -e|grep ^BUILDHISTORY_DIR=)
+
+git --git-dir="$BUILDHISTORY_DIR/.git" "$TAG"
