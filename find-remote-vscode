@@ -1,0 +1,8 @@
+#! /bin/bash
+
+# Find the latest VC Code sockets/paths and set the relevant variables.
+# Needs to be invoked with `source`:
+# $ . find-remote-vscode
+
+PATH="$(ls -d $HOME/.vscode-server/bin/*/bin  -t | head -n1):$PATH"
+export VSCODE_IPC_HOOK_CLI="$(ls ${TMPDIR:-/tmp}/vscode-ipc-*.sock -t | head -n1)"
