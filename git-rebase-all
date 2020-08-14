@@ -24,7 +24,7 @@ check_blacklisted() {
 # Get upstream branch name
 get_upstream() {
     NAME=$1
-    UPSTREAM=$(git config --get branch.$1.upstream ) || UPSTREAM="origin/master"
+    UPSTREAM=$(git config --get branch.$1.merge ) || UPSTREAM="origin/master"
     echo $UPSTREAM
 }
 
