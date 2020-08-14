@@ -10,6 +10,7 @@ import argparse
 import imapclient
 import configparser
 import subprocess
+import git
 
 cp = configparser.ConfigParser()
 cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
@@ -23,11 +24,6 @@ parser.add_argument("-d", "--dryrun", help="Dry-run only", action="store_true", 
 args = parser.parse_args()
 
 verbose = args.verbose
-
-def check_git_workdir():
-    devnull = open(os.devnull, "w")
-    return subprocess.call(["git", "rev-parse", "--is-inside-work-tree"],
-                           stdout=devnull, stderr=subprocess.STDOUT) == 0
 
 def normalise(s):
     return " ".join(s.split())
@@ -75,15 +71,22 @@ def match_messages(server, folder, search=None):
     print("Found %d merged patches" % len(found))
     return found
 
-
-if not check_git_workdir():
+try:
+    repo = git.Repo(".")
+except git.exc.InvalidGitRepositoryError:
     print("handlepatches wasn't ran inside a git clone, aborting")
     sys.exit(1)
 
+config = repo.config_reader()
+for option in ("imapserver", "imapuser", "imappassword", "search"):
+    if not config.has_option("handlepatches", option):
+        print(f"Missing config option handlepatches.{option}")
+        sys.exit(1)
+
 revdata = get_commits(args.branch, args.commits)
 
-server = imapclient.IMAPClient(cp.get("Config", "IMAPServer"), ssl=True)
-server.login(cp.get("Config", "IMAPUser"), cp.get("Config", "IMAPPassword"))
+server = imapclient.IMAPClient(config.get("handlepatches", "imapserver"), ssl=True)
+server.login(config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword"))
 
 print("oe-core...")
 messages = match_messages(server, "[Gmail]/All Mail", "label:Yocto-oe-core")
