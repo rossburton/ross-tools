@@ -88,8 +88,7 @@ revdata = get_commits(args.branch, args.commits)
 server = imapclient.IMAPClient(config.get("handlepatches", "imapserver"), ssl=True)
 server.login(config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword"))
 
-print("oe-core...")
-messages = match_messages(server, "[Gmail]/All Mail", "label:Yocto-oe-core")
+messages = match_messages(server, "[Gmail]/All Mail", config.get("handlepatches", "search"))
 if not args.dryrun:
     server.add_flags(messages, imapclient.SEEN)
     server.remove_flags(messages, imapclient.FLAGGED)
