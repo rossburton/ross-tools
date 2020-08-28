@@ -88,8 +88,13 @@ revdata = get_commits(args.branch, args.commits)
 server = imapclient.IMAPClient(config.get("handlepatches", "imapserver"), ssl=True)
 server.login(config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword"))
 
+# Labels to remove
+remove_label = config.get_value("handlepatches", "removelabel", default="x")
+
 messages = match_messages(server, "[Gmail]/All Mail", config.get("handlepatches", "search"))
 if not args.dryrun:
     server.add_flags(messages, imapclient.SEEN)
-    server.remove_flags(messages, imapclient.FLAGGED)
+    if remove_label:
+        server.remove_gmail_labels(messages, [remove_label])
+    #server.remove_flags(messages, imapclient.FLAGGED)
     #server.delete_messages(messages)
