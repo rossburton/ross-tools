@@ -8,12 +8,8 @@ import os
 import sys
 import argparse
 import imapclient
-import configparser
 import subprocess
 import git
-
-cp = configparser.ConfigParser()
-cp.read(os.path.expanduser("~/.config/handlepatches.conf"))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
