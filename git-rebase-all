@@ -3,12 +3,17 @@
 # Copyright (C) 2015 Ross Burton <ross@burtonini.com>
 # MIT licensed
 
-set -e
+set -eu
 
 BLACKLIST=$(git config --get rebase-all.blacklist) || true
 # Always blacklist master
-BLACKLIST="$BLACKLIST master"
+#BLACKLIST="$BLACKLIST master"
 
+bolden() {
+    BOLD=`tput bold`
+    NORMAL=`tput sgr0`
+    echo "${BOLD}$*${NORMAL}"
+}
 # Returns error if blacklisted
 check_blacklisted() {
     NAME=$1
@@ -21,11 +26,29 @@ check_blacklisted() {
     return 0
 }
 
-# Get upstream branch name
+# Echo the upstream branch for $1, non-zero exit if none
 get_upstream() {
     NAME=$1
-    UPSTREAM=$(git config --get branch.$1.upstream ) || UPSTREAM="origin/master"
-    echo $UPSTREAM
+    git rev-parse --abbrev-ref --symbolic-full-name $NAME@{upstream} 2>/dev/null
+}
+
+# Rebase $1 to it's upstream branch
+try_rebase() {
+    NAME=$1
+    UPSTREAM=$(get_upstream $NAME)
+    if test -z $UPSTREAM; then
+        bolden SKIP: $NAME has no upstream set
+        return 1
+    fi
+    git rebase --quiet $UPSTREAM $NAME 2>/dev/null
+    if [ $? -eq 0 ] ; then
+        bolden SUCCESS: rebased $NAME
+        return 0
+    else
+        bolden FAIL: $NAME does not rebase
+        git rebase --abort
+        return 1
+    fi
 }
 
 COUNT=0
@@ -36,9 +59,7 @@ for NAME in $BRANCHES; do
     COUNT=$((COUNT + 1))
  
     check_blacklisted $NAME || continue
-
-    git checkout --quiet $NAME || continue
-    if ! git try-rebase $(get_upstream $NAME); then
+    if ! try_rebase $NAME; then
         FAILED=$((FAILED + 1))
     fi
 done
