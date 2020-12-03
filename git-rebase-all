@@ -42,10 +42,10 @@ try_rebase() {
     fi
     git rebase --quiet $UPSTREAM $NAME 2>/dev/null
     if [ $? -eq 0 ] ; then
-        bolden SUCCESS: rebased $NAME
+        bolden SUCCESS: rebased $NAME to $UPSTREAM
         return 0
     else
-        bolden FAIL: $NAME does not rebase
+        bolden FAIL: $NAME does not rebase to $UPSTREAM
         git rebase --abort
         return 1
     fi
