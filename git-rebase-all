@@ -14,6 +14,16 @@ bolden() {
     NORMAL=`tput sgr0`
     echo "${BOLD}$*${NORMAL}"
 }
+report_ok() {
+    echo -e "$(tput setaf 2)SUCCESS:$(tput sgr0) $*"
+}
+report_skip() {
+    echo -e "$(tput setaf 3)SKIP:$(tput sgr0) $*"
+}
+report_fail() {
+    echo -e "$(tput setaf 1)FAIL:$(tput sgr0) $*"
+}
+
 # Returns error if blacklisted
 check_blacklisted() {
     NAME=$1
@@ -37,15 +47,15 @@ try_rebase() {
     NAME=$1
     UPSTREAM=$(get_upstream $NAME)
     if test -z $UPSTREAM; then
-        bolden SKIP: $NAME has no upstream set
+        report_skip $NAME has no upstream set
         return 1
     fi
     git rebase --quiet $UPSTREAM $NAME 2>/dev/null
     if [ $? -eq 0 ] ; then
-        bolden SUCCESS: rebased $NAME to $UPSTREAM
+        report_ok rebased $NAME to $UPSTREAM
         return 0
     else
-        bolden FAIL: $NAME does not rebase to $UPSTREAM
+        report_fail $NAME does not rebase to $UPSTREAM
         git rebase --abort
         return 1
     fi
