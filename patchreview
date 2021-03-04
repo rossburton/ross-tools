@@ -1,4 +1,7 @@
 #! /usr/bin/env python3
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
 
 # TODO
 # - option to just list all broken files
@@ -36,7 +39,7 @@ def blame_patch(patch):
                                     "--format=%s (%aN <%aE>)",
                                     "--", patch)).decode("utf-8").splitlines()
 
-def patchreview(path, patches):
+def patchreview(patches):
     import re, os.path
 
     # General pattern: start of line, optional whitespace, tag with optional
@@ -51,11 +54,10 @@ def patchreview(path, patches):
 
     for patch in patches:
 
-        fullpath = os.path.join(path, patch)
         result = Result()
-        results[fullpath] = result
+        results[patch] = result
 
-        content = open(fullpath, encoding='ascii', errors='ignore').read()
+        content = open(patch, encoding='ascii', errors='ignore').read()
 
         # Find the Signed-off-by tag
         match = sob_re.search(content)
@@ -193,6 +195,12 @@ def histogram(results):
     for k in bars:
         print("%-20s %s (%d)" % (k.capitalize() if k else "No status", bars[k], counts[k]))
 
+def gather_patches(directories):
+    patches = []
+    for directory in directories:
+        filenames = subprocess.check_output(("git", "-C", directory, "ls-files", "recipes-*/**/*.patch", "recipes-*/**/*.diff")).decode("utf-8").split()
+        patches += [os.path.join(directory, f) for f in filenames]
+    return patches
 
 if __name__ == "__main__":
     import argparse, subprocess, os
@@ -202,11 +210,11 @@ if __name__ == "__main__":
     args.add_argument("-v", "--verbose", action="store_true", help="show per-patch results")
     args.add_argument("-g", "--histogram", action="store_true", help="show patch histogram")
     args.add_argument("-j", "--json", help="update JSON")
-    args.add_argument("directory", help="directory to scan")
+    args.add_argument("dirs", metavar="DIRECTORY", nargs="+", help="directory to scan")
     args = args.parse_args()
 
-    patches = subprocess.check_output(("git", "-C", args.directory, "ls-files", "recipes-*/**/*.patch", "recipes-*/**/*.diff")).decode("utf-8").split()
-    results = patchreview(args.directory, patches)
+    patches = gather_patches(args.dirs)
+    results = patchreview(patches)
     analyse(results, want_blame=args.blame, verbose=args.verbose)
 
     if args.json:
@@ -218,7 +226,7 @@ if __name__ == "__main__":
 
         row = collections.Counter()
         row["total"] = len(results)
-        row["date"] = subprocess.check_output(["git", "-C", args.directory, "show", "-s", "--pretty=format:%cd", "--date=format:%s"]).decode("utf-8").strip()
+        row["date"] = subprocess.check_output(["git", "-C", args.dirs[0], "show", "-s", "--pretty=format:%cd", "--date=format:%s"]).decode("utf-8").strip()
         for r in results.values():
             if r.upstream_status in status_values:
                 row[r.upstream_status] += 1
