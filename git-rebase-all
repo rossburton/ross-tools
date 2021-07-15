@@ -78,3 +78,5 @@ git checkout --quiet master
 
 echo
 echo "Rebased $COUNT branches, $FAILED didn't rebase successfully."
+
+git branch --verbose
