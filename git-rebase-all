@@ -13,16 +13,13 @@ COUNT=0
 SKIPPED=0
 FAILED=0
 
-report_ok() {
-    HEADER=$1
-    shift
-    echo -e "$(tput setaf 2)$HEADER:$(tput sgr0) $*"
-}
-report_skip() {
-    echo -e "$(tput setaf 3)SKIP:$(tput sgr0) $*"
-}
-report_fail() {
-    echo -e "$(tput setaf 1)FAIL:$(tput sgr0) $*"
+# report [colour code] [header] [message]
+report() {
+    COLOUR=$1
+    HEADER=$2
+    shift 2
+    echo -e "$(tput setaf $COLOUR)$HEADER:$(tput sgr0) $*"
+
 }
 
 # Returns error if blacklisted
@@ -53,20 +50,20 @@ try_rebase() {
     NAME=$1
     UPSTREAM=$(get_upstream $NAME)
     if test -z $UPSTREAM; then
-        report_skip $NAME has no upstream set
+        report 3 SKIP $NAME has no upstream set
         SKIPPED=$((SKIPPED + 1))
         return 1
     fi
     git rebase --quiet $UPSTREAM $NAME 2>/dev/null
     if [ $? -eq 0 ] ; then
         if is_same $NAME $UPSTREAM; then
-            report_ok MERGED $NAME is now $UPSTREAM
+            report 6 MERGED $NAME is now $UPSTREAM
         else
-            report_ok SUCCESS rebased $NAME to $UPSTREAM
+            report 2 SUCCESS rebased $NAME to $UPSTREAM
         fi
         return 0
     else
-        report_fail $NAME does not rebase to $UPSTREAM
+        report 1 FAIL $NAME does not rebase to $UPSTREAM
         git rebase --abort
         FAILED=$((FAILED + 1))
         return 1
