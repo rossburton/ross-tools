@@ -13,11 +13,6 @@ COUNT=0
 SKIPPED=0
 FAILED=0
 
-bolden() {
-    BOLD=`tput bold`
-    NORMAL=`tput sgr0`
-    echo "${BOLD}$*${NORMAL}"
-}
 report_ok() {
     HEADER=$1
     shift
