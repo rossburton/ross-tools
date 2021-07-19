@@ -10,9 +10,11 @@ import argparse
 import imapclient
 import subprocess
 import git
+import pathlib
 
 parser = argparse.ArgumentParser()
 parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
+parser.add_argument("-r", "--repo", help="Repository to scan", type=pathlib.Path, default=".")
 parser.add_argument("-c", "--commits", help="Number of commits back to go in history", type=int, default=10000)
 parser.add_argument("-l", "--list", help="List patches found", action="store_true", default=False)
 parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true", default=False)
@@ -24,8 +26,9 @@ verbose = args.verbose
 def normalise(s):
     return " ".join(s.split())
 
-def get_commits(branch, num_commits):
-    revlist = subprocess.Popen("git log %s --format=oneline -n %d" % (branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
+def get_commits(repo, branch, num_commits):
+    # TODO: this should use GitPython
+    revlist = subprocess.Popen("git -C %s log %s --format=oneline -n %d" % (repo, branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
     revlist = revlist.decode("utf-8")
     revdata = {}
     for line in revlist.split("\n"):
@@ -68,7 +71,7 @@ def match_messages(server, folder, search=None):
     return found
 
 try:
-    repo = git.Repo(".")
+    repo = git.Repo(args.repo)
 except git.exc.InvalidGitRepositoryError:
     print("handlepatches wasn't ran inside a git clone, aborting")
     sys.exit(1)
@@ -79,7 +82,7 @@ for option in ("imapserver", "imapuser", "imappassword", "search"):
         print(f"Missing config option handlepatches.{option}")
         sys.exit(1)
 
-revdata = get_commits(args.branch, args.commits)
+revdata = get_commits(args.repo, args.branch, args.commits)
 
 server = imapclient.IMAPClient(config.get("handlepatches", "imapserver"), ssl=True)
 server.login(config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword"))
