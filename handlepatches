@@ -89,8 +89,10 @@ server.login(config.get("handlepatches", "imapuser"), config.get("handlepatches"
 
 # Labels to remove
 remove_label = config.get_value("handlepatches", "removelabel", default="x")
+folder = server.find_special_folder(imapclient.imapclient.ALL)
+assert folder
 
-messages = match_messages(server, "[Gmail]/All Mail", config.get("handlepatches", "search"))
+messages = match_messages(server, folder, config.get("handlepatches", "search"))
 if not args.dryrun:
     server.add_flags(messages, imapclient.SEEN)
     if remove_label:
