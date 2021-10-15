@@ -18,15 +18,18 @@ def log_parser(stream):
     for line in stream:
         m = task_re.search(line)
         if m:
-            yield m.group("recipe"), m.group("task"), states[m.group("state")]
+            yield states[m.group("state")], m.group("recipe"), m.group("task")
 
 active = set()
-for recipe, task, state in log_parser(open(sys.argv[1], encoding="utf-8")):
+for state, recipe, task in log_parser(open(sys.argv[1], encoding="utf-8")):
     name = recipe + ":" + task
     if state == states.Started:
         active.add(name)
     elif state in (states.Succeeded, states.Failed):
         active.remove(name)
+    else:
+        print(f"ERROR: Unhandled state {state}.")
+        break
 
 print("Active tasks are:")
 for t in sorted(active):
