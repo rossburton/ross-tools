@@ -6,7 +6,7 @@
 # Helpful when you suspect that there is a race in the build tree, such as two
 # tasks writing to the same file.
 #
-# Licensed under the GPLv2.
+# Licensed under the MIT license
 
 import sys, re
 
