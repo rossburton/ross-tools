@@ -4,7 +4,7 @@
 #
 # Helpful when bitbake hangs as there are tasks still executing which have hung.
 #
-# Licensed under the GPLv2.
+# Licensed under the MIT license
 
 
 import enum
