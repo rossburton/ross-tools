@@ -1,0 +1,30 @@
+#! /usr/bin/env python3
+
+# List tasks which were not ran from sstate
+# MIT licensed
+
+import enum
+import sys
+import re
+
+states = enum.Enum("State", "Started Succeeded Failed")
+
+def log_parser(stream):
+    task_re = re.compile(r"NOTE: recipe (?P<recipe>.+): task (?P<task>.+): (?P<state>\w+)")
+    for line in stream:
+        m = task_re.search(line)
+        if m:
+            yield states[m.group("state")], m.group("recipe"), m.group("task")
+
+recipes = set()
+for state, recipe, task in log_parser(open(sys.argv[1], encoding="utf-8")):
+    # Ignore setscene tasks as these pulled from sstate
+    if task.endswith("_setscene"):
+        continue
+    if task in ("do_rm_work",):
+        continue
+    recipes.add(recipe)
+
+print("Built recipes:")
+for t in sorted(recipes):
+    print(" %s" % t)
