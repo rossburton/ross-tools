@@ -4,5 +4,5 @@
 # Needs to be invoked with `source`:
 # $ . find-remote-vscode
 
-PATH="$(ls -d $HOME/.vscode-server/bin/*/bin  -t | head -n1):$PATH"
+PATH="$(ls -d $HOME/.vscode-server/bin/*/bin/remote-cli  -t | head -n1):$PATH"
 export VSCODE_IPC_HOOK_CLI="$(ls ${XDG_RUNTIME_DIR:-/tmp}/vscode-ipc-*.sock -t | head -n1)"
