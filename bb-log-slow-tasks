@@ -1,0 +1,43 @@
+#! /usr/bin/env python3
+
+# Given a bitbake log, identify what tasks are the slowest
+#
+# Licensed under the MIT license
+
+
+import enum
+import sys
+import re
+import datetime
+
+states = enum.Enum("State", "Started Succeeded Failed")
+
+def log_parser(stream, timestamps=False):
+    if timestamps:
+        task_re = re.compile(r"(?P<timestamp>[0-9-]+ [0-9:]+).*NOTE: recipe (?P<recipe>.+): task (?P<task>.+): (?P<state>\w+)")
+    else:
+        task_re = re.compile(r"NOTE: recipe (?P<recipe>.+): task (?P<task>.+): (?P<state>\w+)")
+
+    for line in stream:
+        m = task_re.search(line)
+        if m:
+            # TODO: really need to return a proper object
+            time = datetime.datetime.fromisoformat(m.group("timestamp"))
+            yield time, states[m.group("state")], m.group("recipe"), m.group("task")
+
+running = {}
+tasks = {}
+for timestamp, state, recipe, task in log_parser(open(sys.argv[1], encoding="utf-8"), timestamps=True):
+    name = recipe + ":" + task
+    if state == states.Started:
+        running[name] = timestamp
+    elif state in (states.Succeeded, states.Failed):
+        start_time = running.pop(name)
+        duration = timestamp - start_time
+        tasks[name] = duration
+    else:
+        print(f"ERROR: Unhandled state {state}.")
+        break
+
+for task, duration in sorted(tasks.items(), key=lambda a: a[1])[-20:]:
+    print(f"{task}: {duration}")
