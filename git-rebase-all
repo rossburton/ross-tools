@@ -70,6 +70,17 @@ try_rebase() {
     fi
 }
 
+# 0 if the tree is dirty, 1 otherwise
+is_dirty() {
+    test -n "$(git status --porcelain)"
+}
+
+
+if is_dirty; then
+    report 1 FAIL tree is dirty, refusing to rebase
+    exit 1
+fi
+
 BRANCHES=$(git for-each-ref refs/heads --format='%(refname:strip=2)')
 for NAME in $BRANCHES; do
     COUNT=$((COUNT + 1))
