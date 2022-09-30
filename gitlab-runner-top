@@ -1,0 +1,47 @@
+#! /usr/bin/env python3
+
+# List all active jobs on the runners associated with this project
+
+import argparse
+import gitlab
+import humanize
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--server", nargs="?")
+parser.add_argument("--project", "-p")
+parser.add_argument("--use-config", "-c", action="store_true")
+
+args = parser.parse_args()
+
+# If we're using a configuration, load it into args and re-parse to override the settings
+if args.use_config:
+    import configparser, git
+
+    repo = git.Repo(search_parent_directories=True)
+    with repo.config_reader() as config:
+        for key in ("project",):
+            try:
+                value = config.get("ross-tools", key)
+                setattr(args, key, value)
+            except configparser.NoOptionError:
+                pass
+    args = parser.parse_args(namespace=args)
+
+# TODO check variables are set
+
+gl = gitlab.Gitlab.from_config(args.server)
+gl.auth()
+
+project = gl.projects.get(args.project)
+runners = project.runners.list()
+for runner in runners:
+    print(f"Runner {runner.description}")
+    runner = gl.runners.get(runner.id, lazy=True)
+
+    jobs = runner.jobs.list(status="running")
+    for job in sorted(jobs, key=lambda j: j.duration, reverse=True):
+        print(f"- {job.name} (running for {humanize.precisedelta(job.duration)})")
+        print(f"  From {job.ref} for {job.user['name']}")
+        print(f"  {job.web_url}")
+        print()
+    print()
