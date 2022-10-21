@@ -1,0 +1,80 @@
+#! /usr/bin/env python3
+
+# Copyright (C) 2021 Ross Burton <ross.burton@arm.com>
+# MIT licensed
+
+"""
+Given an autobuilder URL for a build step, download the failing ptest logs that
+are referenced. For example:
+
+$ fetch-ptest-logs https://autobuilder.yoctoproject.org/typhoon/#/builders/82/builds/3853/steps/12/logs/stdio
+
+Will download the glib-2.0 ptest log file.
+"""
+
+import argparse
+import ast
+import re
+import requests
+
+http = requests.Session()
+
+def buildbot(server, method, **args):
+    # TODO handle error returns
+    return http.get(server + "/api/v2/" + method, params=args).json()
+
+def get_destination(server, builder, build):
+    res = buildbot(server, f"builders/{builder}/builds/{build}", property="publish_destination")
+    destination = res["builds"][0]["properties"]["publish_destination"][0]
+    # The destination is a local path, so transform to the external URL
+    destination = destination.replace("/srv/autobuilder/autobuilder.yocto.io/", "https://autobuilder.yocto.io/")
+    destination = destination.replace("/srv/autobuilder/autobuilder.yoctoproject.org/", "https://autobuilder.yocto.io/")
+    return destination
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    # TODO support multiple URLs
+    parser.add_argument("url")
+    args = parser.parse_args()
+
+    url_re = r"(?P<server>https?://autobuilder.yoctoproject.org/typhoon/)#/builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
+    match = re.match(url_re, args.url)
+    if match:
+        server = match.group("server")
+        builder = int(match.group("builder"))
+        build = int(match.group("build"))
+        step = int(match.group("step"))
+        builder_name = buildbot(server, f"/builders/{builder}")["builders"][0]["name"]
+        destination = get_destination(server, builder, build)
+
+        logs = buildbot(server, f"/builders/{builder}/builds/{build}/steps/{step}/logs/stdio/contents")
+        # TODO handle more than one chunk
+        assert len(logs["logchunks"]) == 1
+        logchunk = logs["logchunks"][0]
+        error_lines = []
+        accumulating = False
+        for line in logchunk["content"].splitlines():
+            if not line.startswith("o"):
+                continue
+            line = line[1:]
+            if accumulating and line == "":
+                break
+            if "Failed ptests" in line:
+                accumulating = True
+                continue
+            if accumulating:
+                error_lines.append(line)
+        errors = ast.literal_eval("".join(error_lines))
+
+        for recipe, fails in errors.items():
+            print(f"Recipe {recipe} failures:")
+            for fail in fails:
+                print(f"- {fail}")
+        print()
+
+        for recipe in errors:
+            url = destination + f"/testresults/{builder_name}/{recipe}.log"
+            filename = f"build-{build}-{recipe}-ptest.log"
+            print(f"Fetching {filename}")
+            with open(filename, "wt") as f:
+                f.write(http.get(url).text)
