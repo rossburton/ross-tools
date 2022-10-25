@@ -9,6 +9,11 @@ Author: wangmy via lists.openembedded.org
 
 Extract the email address, find a matching S-o-b, and use that name/email as the
 correct author.
+
+Alters the current commit (specifically, HEAD), so can be used in a rebase
+operation:
+
+$ git rebase --exec=authormunger.py origin/master
 """
 
 # SPDX-License-Identifier: MIT
