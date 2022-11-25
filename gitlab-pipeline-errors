@@ -10,8 +10,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--server", nargs="?")
 parser.add_argument("--project", "-p")
 parser.add_argument("--pipeline", "-l", required=True, help="pipeline ID, or branch name for latest pipeline")
-parser.add_argument("--use-config", "-c", action="store_true")
-
+parser.add_argument("--use-config", "-c", action="store_true", help="Use configuration stored in the current git repository")
+parser.add_argument("--retry", "-r", action="store_true", help="Retry jobs that failed with 'runner system failure'")
 args = parser.parse_args()
 
 # If we're using a configuration, load it into args and re-parse to override the settings
@@ -36,13 +36,19 @@ project = gl.projects.get(args.project)
 if args.pipeline.isdigit():
     pipeline = project.pipelines.get(args.pipeline)
 else:
-    pipeline = project.pipelines.list(ref=args.pipeline)[0]
+    pipeline = project.pipelines.list(ref=args.pipeline, page=1, per_page=1)[0]
     print(f"Found pipeline {pipeline.web_url}")
 
 for job in pipeline.jobs.list(scope="failed"):
     print()
-    print(f"Job {job.name} failed.")
+    print(f"Job {job.name} failed due to {job.failure_reason}.")
+
     real_job = project.jobs.get(job.id, lazy=True)
-    for line in real_job.trace().decode("utf-8").splitlines():
-        if line.startswith(("ERROR:", "WARNING:")):
-            print(line)
+    if job.failure_reason == "script_failure":
+        print(f"Full log at {job.web_url}")
+        for line in real_job.trace().decode("utf-8").splitlines():
+            if line.startswith(("ERROR:", "WARNING:")):
+                print(line)
+    elif job.failure_reason == "runner_system_failure":
+        real_job.retry()
+        print("Restarted job")
