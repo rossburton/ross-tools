@@ -3,7 +3,6 @@
 # List all errors in all failed jobs in the specified pipeline
 
 import argparse
-import re
 import gitlab
 
 parser = argparse.ArgumentParser()
@@ -38,9 +37,9 @@ if args.pipeline.isdigit():
 else:
     pipeline = project.pipelines.list(ref=args.pipeline, page=1, per_page=1)[0]
     print(f"Found pipeline {pipeline.web_url}")
-
-for job in pipeline.jobs.list(scope="failed"):
     print()
+
+for job in pipeline.jobs.list(scope="failed", iterator=True):
     print(f"Job {job.name} failed due to {job.failure_reason}.")
 
     real_job = project.jobs.get(job.id, lazy=True)
@@ -52,3 +51,4 @@ for job in pipeline.jobs.list(scope="failed"):
     elif job.failure_reason == "runner_system_failure":
         real_job.retry()
         print("Restarted job")
+    print()
