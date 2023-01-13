@@ -1,0 +1,64 @@
+#! /usr/bin/env python3
+
+# List the runners used for a specific pipeline
+
+import argparse
+import gitlab
+import collections
+import humanize
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--server", nargs="?")
+parser.add_argument("--use-config", "-c", action="store_true", help="Use configuration stored in the current git repository")
+parser.add_argument("--project", "-p")
+parser.add_argument("--pipeline", "-l", required=True, help="pipeline ID, or branch name for latest pipeline")
+args = parser.parse_args()
+
+# If we're using a configuration, load it into args and re-parse to override the settings
+if args.use_config:
+    import configparser, git
+    repo = git.Repo(search_parent_directories=True)
+    with repo.config_reader() as config:
+        for key in ("project", "stage"):
+            try:
+                value = config.get("ross-tools", key)
+                setattr(args, key, value)
+            except configparser.NoOptionError:
+                pass
+    args = parser.parse_args(namespace=args)
+
+# TODO check variables are set
+
+gl = gitlab.Gitlab.from_config(args.server)
+gl.auth()
+
+project = gl.projects.get(args.project)
+if args.pipeline.isdigit():
+    pipeline = project.pipelines.get(args.pipeline)
+else:
+    pipeline = project.pipelines.list(ref=args.pipeline, page=1, per_page=1)[0]
+    pipeline = project.pipelines.get(pipeline.id)
+    print(f"Found pipeline {pipeline.web_url}")
+    print()
+
+runners = collections.Counter()
+durations = collections.Counter()
+
+print("Pipeline:")
+if pipeline.duration:
+    print(f" Pipeline took {humanize.precisedelta(pipeline.duration)}")
+else:
+    print(f"Pipeline started at {pipeline.started_at}")
+print()
+
+print("Jobs:")
+for job in pipeline.jobs.list(iterator=True):
+    runner = job.runner["description"]
+    runners[runner] += 1
+    durations[runner] += job.duration
+    print(f" {job.name}: {runner} (ran for {humanize.precisedelta(job.duration)})")
+
+print()
+print("Runners:")
+for runner, count in sorted(runners.items()):
+    print(f" {runner}: {count} jobs (cumulative runtime {humanize.precisedelta(durations[runner])})")
