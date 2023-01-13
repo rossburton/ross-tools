@@ -34,8 +34,8 @@ def get_destination(server, builder, build):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # TODO support multiple URLs
-    parser.add_argument("url")
+    parser.add_argument("url", metavar="URL")
+    parser.add_argument("recipes", nargs="*", metavar="RECIPE")
     args = parser.parse_args()
 
     url_re = r"(?P<server>https?://autobuilder.yoctoproject.org/typhoon/)#/builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
@@ -48,32 +48,34 @@ if __name__ == "__main__":
         builder_name = buildbot(server, f"/builders/{builder}")["builders"][0]["name"]
         destination = get_destination(server, builder, build)
 
-        logs = buildbot(server, f"/builders/{builder}/builds/{build}/steps/{step}/logs/stdio/contents")
-        # TODO handle more than one chunk
-        assert len(logs["logchunks"]) == 1
-        logchunk = logs["logchunks"][0]
-        error_lines = []
-        accumulating = False
-        for line in logchunk["content"].splitlines():
-            if not line.startswith("o"):
-                continue
-            line = line[1:]
-            if accumulating and line == "":
-                break
-            if "Failed ptests" in line:
-                accumulating = True
-                continue
-            if accumulating:
-                error_lines.append(line)
-        errors = ast.literal_eval("".join(error_lines))
+        if not args.recipes:
+            logs = buildbot(server, f"/builders/{builder}/builds/{build}/steps/{step}/logs/stdio/contents")
+            # TODO handle more than one chunk
+            assert len(logs["logchunks"]) == 1
+            logchunk = logs["logchunks"][0]
+            error_lines = []
+            accumulating = False
+            for line in logchunk["content"].splitlines():
+                if not line.startswith("o"):
+                    continue
+                line = line[1:]
+                if accumulating and line == "":
+                    break
+                if "Failed ptests" in line:
+                    accumulating = True
+                    continue
+                if accumulating:
+                    error_lines.append(line)
+            errors = ast.literal_eval("".join(error_lines))
 
-        for recipe, fails in errors.items():
-            print(f"Recipe {recipe} failures:")
-            for fail in fails:
-                print(f"- {fail}")
-        print()
+            for recipe, fails in errors.items():
+                args.recipes.append(recipe)
+                print(f"Recipe {recipe} failures:")
+                for fail in fails:
+                    print(f"- {fail}")
+            print()
 
-        for recipe in errors:
+        for recipe in args.recipes:
             url = destination + f"/testresults/{builder_name}/{recipe}.log"
             filename = f"build-{build}-{recipe}-ptest.log"
             print(f"Fetching {filename}")
