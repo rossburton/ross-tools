@@ -3,65 +3,94 @@
 # Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
 # MIT licensed
 
-import re
-import os
-import sys
 import argparse
-import imapclient
-import subprocess
-import git
+import datetime
 import pathlib
+import subprocess
+import sys
+
+import git
+import imapclient
 
 parser = argparse.ArgumentParser()
-parser.add_argument("branch", nargs="?", help="The branch to scan (default origin/master)", default="origin/master")
-parser.add_argument("-r", "--repo", help="Repository to scan", type=pathlib.Path, default=".")
-parser.add_argument("-c", "--commits", help="Number of commits back to go in history", type=int, default=10000)
-parser.add_argument("-l", "--list", help="List patches found", action="store_true", default=False)
-parser.add_argument("-v", "--verbose", help="Verbose mode", action="store_true", default=False)
-parser.add_argument("-d", "--dryrun", help="Dry-run only", action="store_true", default=False)
+parser.add_argument(
+    "branch",
+    nargs="?",
+    help="The branch to scan (default origin/master)",
+    default="origin/master",
+)
+parser.add_argument(
+    "-r", "--repo", help="Repository to scan", type=pathlib.Path, default="."
+)
+parser.add_argument(
+    "-c",
+    "--commits",
+    help="Number of commits back to go in history",
+    type=int,
+    default=10000,
+)
+parser.add_argument(
+    "-l", "--list", help="List patches found", action="store_true", default=False
+)
+parser.add_argument(
+    "-v", "--verbose", help="Verbose mode", action="store_true", default=False
+)
+parser.add_argument(
+    "-d", "--dryrun", help="Dry-run only", action="store_true", default=False
+)
 args = parser.parse_args()
 
 verbose = args.verbose
 
+
 def normalise(s):
     return " ".join(s.split())
 
+
 def get_commits(repo, branch, num_commits):
+    """
+    Return the set of commit messages that are in the repository.
+    """
     # TODO: this should use GitPython
-    revlist = subprocess.Popen("git -C %s log %s --format=oneline -n %d" % (repo, branch, num_commits), shell=True, stdout=subprocess.PIPE).communicate()[0]
+    revlist = subprocess.Popen(
+        "git -C %s log %s --format=oneline -n %d" % (repo, branch, num_commits),
+        shell=True,
+        stdout=subprocess.PIPE,
+    ).communicate()[0]
     revlist = revlist.decode("utf-8")
-    revdata = {}
+    revdata = set()
     for line in revlist.split("\n"):
         if not line:
             continue
-        rev, desc = line.split(" ", 1)
-
-        if verbose: print("Storing commit '%s'" % desc)
-        revdata[normalise(desc)] = rev
+        desc = normalise(line.split(" ", 1)[1])
+        if verbose:
+            print("Storing commit '%s'" % desc)
+        revdata.add(desc)
     return revdata
 
-def match_messages(server, folder, search=None):
+def get_messages(server, config):
+    folder = config.get("handlepatches", "folder")
     server.select_folder(folder)
-    if search:
-        messages = server.gmail_search(search)
-    else:
-        messages = server.search()
-    print("Fetched %d messages" % len(messages))
 
+    date_limit = datetime.datetime.now() - datetime.timedelta(days=14)
+    messages = server.search(["SINCE", date_limit])
+    return messages
+
+def match_messages(server, messages):
     found = []
-    response = server.fetch(messages, ['ENVELOPE'])
+    response = server.fetch(messages, ["ENVELOPE"])
     for msgid, data in response.items():
         if b"ENVELOPE" not in data:
             print("Skipping %s without ENVELOPE" % msgid)
             continue
 
-        # Assume subject is UTF-8
+        # TODO assumes subject is UTF-8
         subject = normalise(data[b"ENVELOPE"].subject.decode("utf-8"))
-        subject = re.sub(r".? patchwork:", "", subject)
         if "]" in subject:
             subject = subject.rsplit("]", 1)[1].strip()
 
-        if verbose: print("Searching for subject '%s'" % subject)
+        if verbose:
+            print("Searching for subject '%s'" % subject)
         if subject in revdata:
             found.append(msgid)
             if verbose or args.list:
@@ -70,6 +99,7 @@ def match_messages(server, folder, search=None):
     print("Found %d merged patches" % len(found))
     return found
 
+
 try:
     repo = git.Repo(args.repo)
 except git.exc.InvalidGitRepositoryError:
@@ -77,15 +107,31 @@ except git.exc.InvalidGitRepositoryError:
     sys.exit(1)
 
 config = repo.config_reader()
-for option in ("imapserver", "imapuser", "imappassword", "search"):
+for option in ("imapserver", "imapuser", "imappassword"):
     if not config.has_option("handlepatches", option):
         print(f"Missing config option handlepatches.{option}")
         sys.exit(1)
 
 revdata = get_commits(args.repo, args.branch, args.commits)
 
-server = imapclient.IMAPClient(config.get("handlepatches", "imapserver"), ssl=True)
-server.login(config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword"))
+server = imapclient.IMAPClient(
+    config.get("handlepatches", "imapserver"),
+    port=config.getint("handlepatches", "imapport", fallback=993),
+    ssl=config.getboolean("handlepatches", "ssl", fallback=True),
+)
+server.login(
+    config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword")
+)
+
+messages = get_messages(server, config)
+messages = match_messages(server, messages)
+
+if not args.dryrun:
+    action = config.get("handlepatches", "action")
+    if action == "markread":
+        server.add_flags(messages, imapclient.SEEN)
+
+sys.exit(0)
 
 # Labels to remove
 remove_label = config.get_value("handlepatches", "removelabel", default="x")
@@ -97,5 +143,5 @@ if not args.dryrun:
     server.add_flags(messages, imapclient.SEEN)
     if remove_label:
         server.remove_gmail_labels(messages, [remove_label])
-    #server.remove_flags(messages, imapclient.FLAGGED)
-    #server.delete_messages(messages)
+    # server.remove_flags(messages, imapclient.FLAGGED)
+    # server.delete_messages(messages)
