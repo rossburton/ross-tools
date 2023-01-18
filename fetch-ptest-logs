@@ -16,6 +16,7 @@ import argparse
 import ast
 import re
 import requests
+import sys
 
 http = requests.Session()
 
@@ -38,48 +39,51 @@ if __name__ == "__main__":
     parser.add_argument("recipes", nargs="*", metavar="RECIPE")
     args = parser.parse_args()
 
-    url_re = r"(?P<server>https?://autobuilder.yoctoproject.org/typhoon/)#/builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
+    url_re = r"(?P<server>https?://autobuilder.yoctoproject.org/typhoon/)#/?builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
     match = re.match(url_re, args.url)
-    if match:
-        server = match.group("server")
-        builder = int(match.group("builder"))
-        build = int(match.group("build"))
-        step = int(match.group("step"))
-        builder_name = buildbot(server, f"/builders/{builder}")["builders"][0]["name"]
-        destination = get_destination(server, builder, build)
+    if not match:
+        print("Cannot parse URL")
+        sys.exit(1)
 
-        if not args.recipes:
-            logs = buildbot(server, f"/builders/{builder}/builds/{build}/steps/{step}/logs/stdio/contents")
-            # TODO handle more than one chunk
-            assert len(logs["logchunks"]) == 1
-            logchunk = logs["logchunks"][0]
-            error_lines = []
-            accumulating = False
-            for line in logchunk["content"].splitlines():
-                if not line.startswith("o"):
-                    continue
-                line = line[1:]
-                if accumulating and line == "":
-                    break
-                if "Failed ptests" in line:
-                    accumulating = True
-                    continue
-                if accumulating:
-                    error_lines.append(line)
-            errors = ast.literal_eval("".join(error_lines))
+    server = match.group("server")
+    builder = int(match.group("builder"))
+    build = int(match.group("build"))
+    step = int(match.group("step"))
+    builder_name = buildbot(server, f"/builders/{builder}")["builders"][0]["name"]
+    destination = get_destination(server, builder, build)
 
-            for recipe, fails in errors.items():
-                args.recipes.append(recipe)
-                print(f"Recipe {recipe} failures:")
-                for fail in fails:
-                    print(f"- {fail}")
-            print()
+    if not args.recipes:
+        logs = buildbot(server, f"/builders/{builder}/builds/{build}/steps/{step}/logs/stdio/contents")
+        # TODO handle more than one chunk
+        assert len(logs["logchunks"]) == 1
+        logchunk = logs["logchunks"][0]
+        error_lines = []
+        accumulating = False
+        for line in logchunk["content"].splitlines():
+            if not line.startswith("o"):
+                continue
+            line = line[1:]
+            if accumulating and line == "":
+                break
+            if "Failed ptests" in line:
+                accumulating = True
+                continue
+            if accumulating:
+                error_lines.append(line)
+        errors = ast.literal_eval("".join(error_lines))
 
-        for recipe in args.recipes:
-            url = destination + f"/testresults/{builder_name}/{recipe}.log"
-            filename = f"build-{build}-{recipe}-ptest.log"
-            print(f"Fetching {filename}")
-            r = http.get(url)
-            r.raise_for_status()
-            with open(filename, "wt") as f:
-                f.write(r.text)
+        for recipe, fails in errors.items():
+            args.recipes.append(recipe)
+            print(f"Recipe {recipe} failures:")
+            for fail in fails:
+                print(f"- {fail}")
+        print()
+
+    for recipe in args.recipes:
+        url = destination + f"/testresults/{builder_name}/{recipe}.log"
+        filename = f"build-{build}-{recipe}-ptest.log"
+        print(f"Fetching {filename}")
+        r = http.get(url)
+        r.raise_for_status()
+        with open(filename, "wt") as f:
+            f.write(r.text)
