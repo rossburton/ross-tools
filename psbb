@@ -1,6 +1,6 @@
 #! /bin/sh
 
-for PID in $(pgrep '^Cooker$'); do
+for PID in $(pgrep --uid $(id -u) '^Cooker$'); do
 	pstree -p -l $PID
 	echo
 done
