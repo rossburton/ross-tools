@@ -6,8 +6,6 @@
 set -eu
 
 BLACKLIST=$(git config --get rebase-all.blacklist) || true
-# Always blacklist master
-#BLACKLIST="$BLACKLIST master"
 
 COUNT=0
 SKIPPED=0
@@ -19,7 +17,6 @@ report() {
     HEADER=$2
     shift 2
     echo -e "$(tput setaf $COLOUR)$HEADER:$(tput sgr0) $*"
-
 }
 
 # Returns error if blacklisted
@@ -89,7 +86,15 @@ for NAME in $BRANCHES; do
     try_rebase $NAME || :
 done
 
-git checkout --quiet master
+# https://stackoverflow.com/a/66895556
+DEFAULT_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || true)
+DEFAULT_BRANCH=${DEFAULT_BRANCH#origin/}
+if [ $DEFAULT_BRANCH = HEAD ]; then
+    DEFAULT_BRANCH=""
+    report 1 WARNING "cannot identify default branch (run git remote set-head origin --auto)"
+fi
+
+test -n "$DEFAULT_BRANCH" && git checkout --quiet $DEFAULT_BRANCH
 
 echo
 echo "Rebased $COUNT branches, $SKIPPED skipped, $FAILED didn't rebase successfully."
