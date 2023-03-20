@@ -3,21 +3,20 @@
 # List tasks which were not ran from sstate
 # MIT licensed
 
-import enum
 import sys
 import re
 
-states = enum.Enum("State", "Started Succeeded Failed")
-
 def log_parser(stream):
-    task_re = re.compile(r"NOTE: recipe (?P<recipe>.+): task (?P<task>.+): (?P<state>\w+)")
+    # NOTE: Running setscene task 170 of 191 (virtual:native:/home/ross/Yocto/poky/meta/recipes-support/gdbm/gdbm_1.23.bb:do_populate_sysroot_setscene)
+    # NOTE: Running task 313 of 785 (/home/ross/Yocto/poky/meta/recipes-kernel/linux-libc-headers/linux-libc-headers_6.1.bb:do_unpack)
+    task_re = re.compile(r"NOTE: Running( setscene)? task \d+ of \d+ \((?P<recipe>.+):(?P<task>.+)\)")
     for line in stream:
         m = task_re.search(line)
         if m:
-            yield states[m.group("state")], m.group("recipe"), m.group("task")
+            yield m.group("recipe"), m.group("task")
 
 recipes = set()
-for state, recipe, task in log_parser(open(sys.argv[1], encoding="utf-8")):
+for recipe, task in log_parser(open(sys.argv[1], encoding="utf-8")):
     # Ignore setscene tasks as these pulled from sstate
     if task.endswith("_setscene"):
         continue
