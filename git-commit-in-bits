@@ -1,0 +1,20 @@
+#! /bin/bash
+
+# Commit all of the changes in a tree in a separate commit for each file
+
+set -eu
+
+# All arguments form a commit message
+MESSAGE="$*"
+
+# The top of the git repository
+TOP=$(git rev-parse --show-toplevel)
+
+git status --porcelain | while read mode filename; do
+    # TODO: not great, eats whitespace so " M" (added but not staged) still gets committed
+    case $mode in
+    A|M|D)
+        git commit -m "$filename: $MESSAGE" $TOP/$filename
+        ;;
+    esac
+done
