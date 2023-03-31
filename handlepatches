@@ -72,7 +72,7 @@ def get_messages(server, config):
     folder = config.get("handlepatches", "folder")
     server.select_folder(folder)
 
-    date_limit = datetime.datetime.now() - datetime.timedelta(days=14)
+    date_limit = datetime.datetime.now() - datetime.timedelta(days=60)
     messages = server.search(["SINCE", date_limit])
     return messages
 
