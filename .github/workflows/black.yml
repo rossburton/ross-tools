@@ -10,4 +10,4 @@ jobs:
       - uses: psf/black@stable
         with:
           options: "--check --verbose"
-          src: "."
+          src: "$(git grep '/usr/bin/env python3')"
