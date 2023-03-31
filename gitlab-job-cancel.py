@@ -40,7 +40,7 @@ project = gl.projects.get(args.project)
 if args.pipeline.isdigit():
     pipeline = project.pipelines.get(args.pipeline)
 else:
-    pipeline = project.pipelines.list(ref=args.pipeline)[0]
+    pipeline = project.pipelines.list(ref=args.pipeline, get_all=False)[0]
     print(f"Found pipeline {pipeline.web_url}")
 
 for job in pipeline.jobs.list(all=True):
