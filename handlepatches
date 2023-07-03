@@ -12,11 +12,11 @@ import sys
 import git
 import imapclient
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(
     "branch",
     nargs="?",
-    help="The branch to scan (default origin/master)",
+    help="The branch to scan",
     default="origin/master",
 )
 parser.add_argument(
