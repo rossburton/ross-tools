@@ -10,6 +10,7 @@
 import enum
 import sys
 import re
+import collections
 
 states = enum.Enum("State", "Started Succeeded Failed")
 
@@ -20,17 +21,18 @@ def log_parser(stream):
         if m:
             yield states[m.group("state")], m.group("recipe"), m.group("task")
 
-active = set()
+active = collections.Counter()
 for state, recipe, task in log_parser(open(sys.argv[1], encoding="utf-8")):
     name = recipe + ":" + task
     if state == states.Started:
-        active.add(name)
+        active[name] += 1
     elif state in (states.Succeeded, states.Failed):
-        active.remove(name)
+        active[name] -= 1
     else:
         print(f"ERROR: Unhandled state {state}.")
         break
 
 print("Active tasks are:")
-for t in sorted(active):
-    print(" %s" % t)
+for task, count in sorted(active.items()):
+    if count:
+        print(f" {task} {count}")
