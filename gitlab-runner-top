@@ -35,7 +35,7 @@ gl.auth()
 project = gl.projects.get(args.project)
 runners = project.runners.list()
 for runner in runners:
-    print(f"Runner {runner.description}")
+    print(f"Runner {runner.description} ({runner.status})")
     runner = gl.runners.get(runner.id, lazy=True)
 
     jobs = runner.jobs.list(status="running")
