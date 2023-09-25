@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--server", nargs="?")
 parser.add_argument("--project", "-p")
 parser.add_argument("--use-config", "-c", action="store_true")
-
+parser.add_argument("--tail", "-t", type=int, const=1, nargs="?")
 args = parser.parse_args()
 
 # If we're using a configuration, load it into args and re-parse to override the settings
@@ -43,5 +43,12 @@ for runner in runners:
         print(f"- {job.name} (running for {humanize.precisedelta(job.duration)})")
         print(f"  From {job.ref} for {job.user['name']}")
         print(f"  {job.web_url}")
+
+        if args.tail:
+            print("  ---")
+            job = project.jobs.get(job.id, lazy=True)
+            trace = job.trace().decode("utf-8").splitlines()
+            print("\n".join(f"  {s.strip()}" for s in trace[-args.tail :]))
+            print("  ---")
         print()
     print()
