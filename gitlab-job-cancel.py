@@ -11,7 +11,7 @@ parser.add_argument("--server", nargs="?")
 parser.add_argument("--project", "-p")
 parser.add_argument("--pipeline", "-l", required=True, help="pipeline ID, or branch name for latest pipeline")
 parser.add_argument("--stage", "-s", nargs="?")
-parser.add_argument("--keep", "-k", nargs="?")
+parser.add_argument("--keep", "-k", action="append", help="Regex to match job names to keep (can be specified multiple times)")
 # TODO make keep exclusive with --cancel
 parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--use-config", "-c", action="store_true")
@@ -49,8 +49,10 @@ for job in pipeline.jobs.list(all=True):
         cancel = False
     elif job.status not in ("created", "pending", "running"):
         cancel = False
-    elif args.keep and re.search(args.keep, job.name):
-        cancel = False
+    elif args.keep:
+        for pattern in args.keep:
+            if re.search(pattern, job.name):
+                cancel = False
     # TODO cancel_name
 
     print(f"{'Cancelling' if cancel else 'Leaving'} {job.stage}:{job.name} ({job.status})")
