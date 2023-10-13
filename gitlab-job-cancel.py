@@ -9,9 +9,19 @@ import gitlab
 parser = argparse.ArgumentParser()
 parser.add_argument("--server", nargs="?")
 parser.add_argument("--project", "-p")
-parser.add_argument("--pipeline", "-l", required=True, help="pipeline ID, or branch name for latest pipeline")
+parser.add_argument(
+    "--pipeline",
+    "-l",
+    required=True,
+    help="pipeline ID, or branch name for latest pipeline",
+)
 parser.add_argument("--stage", "-s", nargs="?")
-parser.add_argument("--keep", "-k", action="append", help="Regex to match job names to keep (can be specified multiple times)")
+parser.add_argument(
+    "--keep",
+    "-k",
+    action="append",
+    help="Regex to match job names to keep (can be specified multiple times)",
+)
 # TODO make keep exclusive with --cancel
 parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--use-config", "-c", action="store_true")
@@ -21,6 +31,7 @@ args = parser.parse_args()
 # If we're using a configuration, load it into args and re-parse to override the settings
 if args.use_config:
     import configparser, git
+
     repo = git.Repo(search_parent_directories=True)
     with repo.config_reader() as config:
         for key in ("project", "stage"):
@@ -55,7 +66,9 @@ for job in pipeline.jobs.list(all=True):
                 cancel = False
     # TODO cancel_name
 
-    print(f"{'Cancelling' if cancel else 'Leaving'} {job.stage}:{job.name} ({job.status})")
+    print(
+        f"{'Cancelling' if cancel else 'Leaving'} {job.stage}:{job.name} ({job.status})"
+    )
     if cancel and not args.dry_run:
         real_job = project.jobs.get(job.id, lazy=True)
         real_job.cancel()
