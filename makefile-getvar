@@ -1,0 +1,12 @@
+#! /bin/sh
+
+# Get a variable's value from a makefile.
+#
+# $ makefile-getvar Makefile VARIABLE
+
+make -f - $2.var <<EOF
+include $1
+
+%.var:
+	@echo \$(\$*)
+EOF
