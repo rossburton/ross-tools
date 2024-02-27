@@ -1,0 +1,8 @@
+#! /bin/bash
+
+# List all machine configurations available in the current bitbake environment.
+
+echo $(bitbake-getvar --value BBPATH) | while read -d: LAYER; do
+    MACHINEDIR=$LAYER/conf/machine
+    test -d $MACHINEDIR && find $MACHINEDIR -name \*.conf -printf '%f\n'
+done
