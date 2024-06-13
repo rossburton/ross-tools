@@ -30,8 +30,16 @@ parser.add_argument(
     default=10000,
 )
 parser.add_argument(
+    "-y",
+    "--days",
+    help="Number of days of email to search",
+    type=int,
+    default=30,
+)
+parser.add_argument(
     "-l", "--list", help="List patches found", action="store_true", default=False
 )
+# TODO use logging for verbose mode
 parser.add_argument(
     "-v", "--verbose", help="Verbose mode", action="store_true", default=False
 )
@@ -68,33 +76,45 @@ def get_commits(repo, branch, num_commits):
         revdata.add(desc)
     return revdata
 
-def get_messages(server, config):
+def get_messages(server, config, days):
     folder = config.get("handlepatches", "folder")
     server.select_folder(folder)
 
-    date_limit = datetime.datetime.now() - datetime.timedelta(days=60)
+    date_limit = datetime.datetime.now() - datetime.timedelta(days=days)
     messages = server.search(["SINCE", date_limit])
     return messages
 
-def match_messages(server, messages):
+def paginate(items, per_page):
+    return (items[i:i+per_page] for i in range(0, len(items), per_page))
+
+def match_messages(server, all_messages):
     found = []
-    response = server.fetch(messages, ["ENVELOPE"])
-    for msgid, data in response.items():
-        if b"ENVELOPE" not in data:
-            print("Skipping %s without ENVELOPE" % msgid)
+    for messages in paginate(all_messages, 10):
+        if verbose:
+            print("Fetching messages %s" % ", ".join((str(i) for i in messages)))
+
+        try:
+            response = server.fetch(messages, ["ENVELOPE"])
+        except Exception as e:
+            print(e)
             continue
 
-        # TODO assumes subject is UTF-8
-        subject = normalise(data[b"ENVELOPE"].subject.decode("utf-8"))
-        if "]" in subject:
-            subject = subject.rsplit("]", 1)[1].strip()
+        for msgid, data in response.items():
+            if b"ENVELOPE" not in data:
+                print("Skipping %s without ENVELOPE" % msgid)
+                continue
 
-        if verbose:
-            print("Searching for subject '%s'" % subject)
-        if subject in revdata:
-            found.append(msgid)
-            if verbose or args.list:
-                print("Found match for %s" % subject)
+            # TODO assumes subject is UTF-8
+            subject = normalise(data[b"ENVELOPE"].subject.decode("utf-8"))
+            if "]" in subject:
+                subject = subject.rsplit("]", 1)[1].strip()
+
+            if verbose:
+                print("Searching for subject '%s'" % subject)
+            if subject in revdata:
+                found.append(msgid)
+                if verbose or args.list:
+                    print("Found match for %s" % subject)
 
     print("Found %d merged patches" % len(found))
     return found
@@ -123,7 +143,7 @@ server.login(
     config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword")
 )
 
-messages = get_messages(server, config)
+messages = get_messages(server, config, args.days)
 messages = match_messages(server, messages)
 
 if not args.dryrun:
