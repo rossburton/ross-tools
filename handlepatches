@@ -1,16 +1,30 @@
 #! /usr/bin/env python3
 
-# Copyright (C) 2015 Ross Burton <ross.burton@intel.com>
+# Copyright (C) 2015-2024 Ross Burton <ross.burton@arm.com>
 # MIT licensed
 
 import argparse
 import datetime
+import itertools
 import pathlib
 import subprocess
 import sys
 
 import git
 import imapclient
+
+try:
+    # 3.12 onwards
+    from itertools import batched
+except ImportError:
+    def batched(iterable, n):
+        if n < 1:
+            raise ValueError('n must be at least one')
+        iterator = iter(iterable)
+        while batch := tuple(itertools.islice(iterator, n)):
+            yield batch
+
+BATCH_SIZE = 25
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(
@@ -25,9 +39,9 @@ parser.add_argument(
 parser.add_argument(
     "-c",
     "--commits",
-    help="Number of commits back to go in history",
+    help="Number of commits back to go in history (-1 for all commits)",
     type=int,
-    default=10000,
+    default=-1,
 )
 parser.add_argument(
     "-y",
@@ -61,7 +75,7 @@ def get_commits(repo, branch, num_commits):
     """
     # TODO: this should use GitPython
     revlist = subprocess.Popen(
-        "git -C %s log %s --format=oneline -n %d" % (repo, branch, num_commits),
+        "git -C %s log %s --format=oneline --max-count=%d" % (repo, branch, num_commits),
         shell=True,
         stdout=subprocess.PIPE,
     ).communicate()[0]
@@ -78,18 +92,20 @@ def get_commits(repo, branch, num_commits):
 
 def get_messages(server, config, days):
     folder = config.get("handlepatches", "folder")
+    if verbose:
+        print(f"Selecting {folder}")
     server.select_folder(folder)
 
     date_limit = datetime.datetime.now() - datetime.timedelta(days=days)
-    messages = server.search(["SINCE", date_limit])
+    if verbose:
+        print(f"Search for messages since {date_limit}")
+    messages = server.search(["UNSEEN", "SINCE", date_limit])
+    if verbose:
+        print(f"Found {len(messages)} messages")
     return messages
 
-def paginate(items, per_page):
-    return (items[i:i+per_page] for i in range(0, len(items), per_page))
-
 def match_messages(server, all_messages):
-    found = []
-    for messages in paginate(all_messages, 10):
+    for messages in batched(all_messages, BATCH_SIZE):
         if verbose:
             print("Fetching messages %s" % ", ".join((str(i) for i in messages)))
 
@@ -104,20 +120,16 @@ def match_messages(server, all_messages):
                 print("Skipping %s without ENVELOPE" % msgid)
                 continue
 
-            # TODO assumes subject is UTF-8
-            subject = normalise(data[b"ENVELOPE"].subject.decode("utf-8"))
+            subject = normalise(data[b"ENVELOPE"].subject.decode("utf-8", errors="ignore"))
             if "]" in subject:
                 subject = subject.rsplit("]", 1)[1].strip()
 
             if verbose:
                 print("Searching for subject '%s'" % subject)
             if subject in revdata:
-                found.append(msgid)
                 if verbose or args.list:
                     print("Found match for %s" % subject)
-
-    print("Found %d merged patches" % len(found))
-    return found
+                yield msgid
 
 
 try:
@@ -133,12 +145,21 @@ for option in ("imapserver", "imapuser", "imappassword"):
         sys.exit(1)
 
 revdata = get_commits(args.repo, args.branch, args.commits)
+if verbose:
+    print(f"Stored {len(revdata)} commits")
+
+action = config.get("handlepatches", "action")
+if action != "markread":
+    print(f"Unhandled action {action}")
+    sys.exit(1)
 
 server = imapclient.IMAPClient(
     config.get("handlepatches", "imapserver"),
     port=config.getint("handlepatches", "imapport", fallback=993),
     ssl=config.getboolean("handlepatches", "ssl", fallback=True),
 )
+if verbose:
+    print("Logging into IMAP...")
 server.login(
     config.get("handlepatches", "imapuser"), config.get("handlepatches", "imappassword")
 )
@@ -147,21 +168,7 @@ messages = get_messages(server, config, args.days)
 messages = match_messages(server, messages)
 
 if not args.dryrun:
-    action = config.get("handlepatches", "action")
-    if action == "markread":
-        server.add_flags(messages, imapclient.SEEN)
-
-sys.exit(0)
-
-# Labels to remove
-remove_label = config.get_value("handlepatches", "removelabel", default="x")
-folder = server.find_special_folder(imapclient.imapclient.ALL)
-assert folder
-
-messages = match_messages(server, folder, config.get("handlepatches", "search"))
-if not args.dryrun:
-    server.add_flags(messages, imapclient.SEEN)
-    if remove_label:
-        server.remove_gmail_labels(messages, [remove_label])
-    # server.remove_flags(messages, imapclient.FLAGGED)
-    # server.delete_messages(messages)
+    for msgs in batched(messages, BATCH_SIZE):
+        if verbose:
+            print(f"Setting SEEN flag on messages: {' '.join(str(i) for i in msgs)}")
+        server.add_flags(msgs, imapclient.SEEN)
