@@ -54,6 +54,7 @@ if __name__ == "__main__":
 
     if not args.recipes:
         logs = buildbot(server, f"/builders/{builder}/builds/{build}/steps/{step}/logs/stdio/contents")
+
         # TODO handle more than one chunk
         assert len(logs["logchunks"]) == 1
         logchunk = logs["logchunks"][0]
@@ -65,7 +66,7 @@ if __name__ == "__main__":
             line = line[1:]
             if accumulating and line == "":
                 break
-            if "Failed ptests" in line:
+            if "Failed ptests:" in line:
                 accumulating = True
                 continue
             if accumulating:
@@ -75,8 +76,14 @@ if __name__ == "__main__":
         for recipe, fails in errors.items():
             args.recipes.append(recipe)
             print(f"Recipe {recipe} failures:")
-            for fail in fails:
-                print(f"- {fail}")
+            # If the failure data is just a string then it's the unparsed output,
+            # don't show it. Although in some cases this would mean we don't need
+            # to download it in the next step...
+            if isinstance(fails, str):
+                print("Failed to parse log output")
+            else:
+                for fail in fails:
+                    print(f"- {fail}")
         print()
 
     for recipe in args.recipes:
