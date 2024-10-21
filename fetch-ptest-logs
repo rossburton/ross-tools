@@ -17,6 +17,7 @@ import ast
 import re
 import requests
 import sys
+import logging
 
 http = requests.Session()
 
@@ -37,13 +38,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("url", metavar="URL")
     parser.add_argument("recipes", nargs="*", metavar="RECIPE")
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
 
     url_re = r"(?P<server>https?://autobuilder.yoctoproject.org/typhoon/)#/?builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
     match = re.match(url_re, args.url)
     if not match:
         print("Cannot parse URL")
         sys.exit(1)
+
+    logging.debug(f"URL matches: {match.groupdict()}")
 
     server = match.group("server")
     builder = int(match.group("builder"))
@@ -90,6 +96,7 @@ if __name__ == "__main__":
         url = destination + f"/testresults/{builder_name}/{recipe}.log"
         filename = f"build-{build}-{recipe}-ptest.log"
         print(f"Fetching {filename}")
+        logging.debug(f"Fetching {url}")
         r = http.get(url)
         r.raise_for_status()
         with open(filename, "wt") as f:
