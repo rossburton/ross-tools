@@ -4,6 +4,6 @@
 
 TAG="${1:-temptag}"
 
-eval $(bitbake -e|grep ^BUILDHISTORY_DIR=)
+BUILDHISTORY_DIR=$(bitbake-getvar --value BUILDHISTORY_DIR)
 
-git --git-dir="$BUILDHISTORY_DIR/.git" "$TAG"
+git --git-dir="$BUILDHISTORY_DIR/.git" tag "$TAG"
