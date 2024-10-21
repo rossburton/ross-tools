@@ -29,9 +29,9 @@ def buildbot(server, method, **args):
 def get_destination(server, builder, build):
     res = buildbot(server, f"builders/{builder}/builds/{build}", property="publish_destination")
     destination = res["builds"][0]["properties"]["publish_destination"][0]
-    # The destination is a local path, so transform to the external URL
-    destination = destination.replace("/srv/autobuilder/autobuilder.yocto.io/", "https://autobuilder.yocto.io/")
-    destination = destination.replace("/srv/autobuilder/autobuilder.yoctoproject.org/", "https://autobuilder.yocto.io/")
+    # The destination is a local path, so transform to the external URL.
+    # Assumes that the local path is /srv/autobuilder/[hostname]
+    destination = destination.replace("/srv/autobuilder/", "https://")
     return destination
 
 if __name__ == "__main__":
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
 
-    url_re = r"(?P<server>https?://autobuilder.yoctoproject.org/typhoon/)#/?builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
+    url_re = r"(?P<server>https?://.+/)#/?builders/(?P<builder>\d+)/builds/(?P<build>\d+)/steps/(?P<step>\d+)/.*"
     match = re.match(url_re, args.url)
     if not match:
         print("Cannot parse URL")
